@@ -1,0 +1,6 @@
+{
+  "name": "JME Ads - প্রিমিয়াম আর্নিং প্ল্যাটফর্ম",
+  "description": "বাংলাদেশের বিশ্বস্ত অনলাইন আর্নিং প্ল্যাটফর্ম। বিজ্ঞাপন দেখে এবং বন্ধুদের রেফার করে প্রতিদিন আয় করুন। বিকাশ ও নগদ এর মাধ্যমে দ্রুত পেমেন্ট নিন।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

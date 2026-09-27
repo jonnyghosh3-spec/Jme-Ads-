@@ -1,0 +1,92 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile with balance and referral data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "format": "email", "maxLength": 120 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "referralCode": { "type": "string", "maxLength": 20 },
+        "referredBy": { "type": "string", "maxLength": 30 },
+        "balance": { "type": "number" },
+        "todayEarned": { "type": "number" },
+        "totalEarned": { "type": "number" },
+        "referralEarned": { "type": "number" },
+        "totalWithdrawn": { "type": "number" },
+        "accountStatus": { "type": "string", "enum": ["active", "under_review", "suspended", "banned"] },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "name", "email", "referralCode", "balance", "role"]
+    },
+    "Task": {
+      "title": "Advertisement Task",
+      "description": "Smartlink or video task for users to watch and earn",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "maxLength": 100 },
+        "smartLink": { "type": "string", "maxLength": 300 },
+        "reward": { "type": "number" },
+        "dailyLimit": { "type": "number" },
+        "active": { "type": "boolean" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "title", "smartLink", "reward", "dailyLimit", "active"]
+    },
+    "Withdrawal": {
+      "title": "Withdrawal Request",
+      "description": "Cashout request to bKash/Nagad",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "uid": { "type": "string" },
+        "method": { "type": "string" },
+        "accountNumber": { "type": "string", "maxLength": 30 },
+        "amount": { "type": "number" },
+        "fee": { "type": "number" },
+        "netAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "processing", "approved", "paid", "rejected"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "uid", "method", "accountNumber", "amount", "status"]
+    },
+    "Transaction": {
+      "title": "Financial Transaction",
+      "description": "User balance modification record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "uid": { "type": "string" },
+        "type": { "type": "string" },
+        "amount": { "type": "number" },
+        "balanceBefore": { "type": "number" },
+        "balanceAfter": { "type": "number" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "uid", "type", "amount", "balanceBefore", "balanceAfter"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User account documents"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Advertiser smartlink tasks"
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "Withdrawal",
+      "description": "User cashout requests"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Audit trail of all rewards and cashouts"
+    }
+  }
+}

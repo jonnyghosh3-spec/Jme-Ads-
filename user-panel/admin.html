@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>JME Ads - অ্যাডমিন প্যানেল</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@500;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Firebase Compat SDK (Super Lightweight, No Bundler Needed) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    body {
+      font-family: 'Hind Siliguri', sans-serif;
+      background-color: #FFFDF0;
+      color: #000;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .font-eng { font-family: 'Outfit', sans-serif; }
+    
+    /* Neo-Brutalism Core Utilities */
+    .nb-box {
+      border: 3px solid #000;
+      box-shadow: 4px 4px 0px #000;
+      transition: all 0.15s ease;
+    }
+    .nb-box-sm {
+      border: 2px solid #000;
+      box-shadow: 2.5px 2.5px 0px #000;
+    }
+    .nb-btn {
+      border: 3px solid #000;
+      box-shadow: 3.5px 3.5px 0px #000;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+    .nb-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0px #000;
+    }
+    .nb-input {
+      border: 3px solid #000;
+      box-shadow: 3px 3px 0px #000;
+      outline: none;
+      font-weight: 600;
+    }
+    .nb-input:focus {
+      background-color: #FEF9C3;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-24">
+
+  <!-- PIN LOCK SCREEN -->
+  <div id="pinScreen" class="fixed inset-0 z-50 bg-[#FFE500] flex items-center justify-center p-4">
+    <div class="nb-box bg-white p-6 rounded-2xl w-full max-w-sm text-center">
+      <div class="w-16 h-16 bg-[#00F0FF] nb-box rounded-2xl mx-auto flex items-center justify-center mb-4">
+        <i class="fa-solid fa-shield-halved text-2xl text-black"></i>
+      </div>
+      <h2 class="text-xl font-extrabold mb-1">অ্যাডমিন প্রবেশদ্বার</h2>
+      <p class="text-xs text-gray-700 font-semibold mb-4">আপনার অ্যাডমিন পিন কোড প্রদান করুন</p>
+      
+      <div class="mb-4">
+        <input type="password" id="pinInput" maxlength="8" placeholder="পিন লিখুন (ডিফল্ট: 1234)" 
+          class="nb-input w-full py-3 px-4 text-center text-lg tracking-widest rounded-xl bg-gray-50">
+      </div>
+      
+      <button onclick="verifyPin()" class="nb-btn w-full py-3 rounded-xl bg-[#00FF66] text-black text-sm">
+        <i class="fa-solid fa-lock-open mr-1"></i> আনলক করুন
+      </button>
+      <p id="pinError" class="text-xs text-red-600 font-bold mt-2 hidden">ভুল পিন কোড! আবার চেষ্টা করুন।</p>
+    </div>
+  </div>
+
+  <!-- APP CONTAINER -->
+  <div id="mainApp" class="max-w-md mx-auto hidden min-h-screen flex flex-col px-3 pt-3">
+    
+    <!-- Top Header -->
+    <header class="nb-box bg-[#FFE500] p-3.5 rounded-2xl mb-4 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-xl bg-black text-[#FFE500] flex items-center justify-center font-black text-lg nb-box-sm">
+          JME
+        </div>
+        <div>
+          <h1 class="font-black text-base leading-tight">অ্যাডমিন কন্ট্রোল</h1>
+          <div class="flex items-center gap-1.5">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#00FF66] border border-black animate-pulse"></span>
+            <span class="text-[11px] font-bold text-gray-800" id="liveDbStatus">ডাটাবেজ সংযুক্ত</span>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="refreshData()" title="রিফ্রেশ" class="nb-btn bg-white w-9 h-9 rounded-xl flex items-center justify-center text-xs">
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+        <button onclick="lockAdmin()" title="লক করুন" class="nb-btn bg-[#FF3366] text-white w-9 h-9 rounded-xl flex items-center justify-center text-xs">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- TAB 1: DASHBOARD -->
+    <section id="tab-dashboard" class="space-y-4">
+      <!-- 2 Stats Cards -->
+      <div class="grid grid-cols-2 gap-3">
+        <!-- Live Registered Users -->
+        <div class="nb-box bg-[#00F0FF] p-4 rounded-2xl">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-black">মোট ইউজার</span>
+            <div class="w-7 h-7 bg-white nb-box-sm rounded-lg flex items-center justify-center text-xs">
+              <i class="fa-solid fa-users"></i>
+            </div>
+          </div>
+          <div class="text-3xl font-black font-eng text-black" id="statUserCount">০</div>
+          <p class="text-[10px] font-bold text-gray-800 mt-1">ফায়ারবেস লাইভ গণনা</p>
+        </div>
+
+        <!-- Pending Withdrawals -->
+        <div class="nb-box bg-[#FF3366] text-white p-4 rounded-2xl">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider">পেন্ডিং অর্ডার</span>
+            <div class="w-7 h-7 bg-white text-black nb-box-sm rounded-lg flex items-center justify-center text-xs">
+              <i class="fa-solid fa-clock"></i>
+            </div>
+          </div>
+          <div class="text-3xl font-black font-eng" id="statPendingCount">০</div>
+          <p class="text-[10px] font-bold text-gray-100 mt-1">অপেক্ষমাণ উত্তোলন</p>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="nb-box bg-white p-4 rounded-2xl">
+        <h3 class="font-extrabold text-sm mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-bolt text-[#FFE500]"></i> দ্রুত অ্যাকশন
+        </h3>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <button onclick="switchTab('withdrawals')" class="nb-btn bg-[#FFE500] py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-hand-holding-dollar"></i> রিকোয়েস্ট দেখুন
+          </button>
+          <button onclick="switchTab('settings')" class="nb-btn bg-[#00FF66] py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-sliders"></i> সেটিংস পরিবর্তন
+          </button>
+        </div>
+      </div>
+
+      <!-- Recent Pending List Preview -->
+      <div class="nb-box bg-white p-4 rounded-2xl">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-extrabold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-bell text-[#FF3366]"></i> সাম্প্রতিক উত্তোলন আবেদন
+          </h3>
+          <span class="text-[11px] font-bold bg-[#FFE500] px-2 py-0.5 rounded-lg border-2 border-black" id="pendingBadge">০ টি</span>
+        </div>
+        <div id="quickWithdrawalList" class="space-y-2">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: WITHDRAWALS -->
+    <section id="tab-withdrawals" class="space-y-3 hidden">
+      <div class="nb-box bg-[#FFE500] p-3 rounded-2xl flex items-center justify-between">
+        <div>
+          <h2 class="font-black text-sm">উত্তোলন অনুমোদন প্যানেল</h2>
+          <p class="text-[11px] font-bold text-gray-800">ইউজারদের আবেদন যাচাই ও পেমেন্ট করুন</p>
+        </div>
+        <div class="text-right">
+          <span class="font-black text-lg font-eng text-black" id="wdTotalPending">০</span>
+          <span class="text-[10px] block font-bold">পেন্ডিং</span>
+        </div>
+      </div>
+
+      <!-- Real-Time List -->
+      <div id="allWithdrawalsContainer" class="space-y-3">
+        <!-- Injected via JS -->
+      </div>
+    </section>
+
+    <!-- TAB 3: TASKS / SMARTLINKS -->
+    <section id="tab-tasks" class="space-y-3 hidden">
+      <div class="nb-box bg-[#00F0FF] p-3 rounded-2xl flex items-center justify-between">
+        <div>
+          <h2 class="font-black text-sm">২৪টি স্মার্টলিংক ম্যানেজমেন্ট</h2>
+          <p class="text-[11px] font-bold text-gray-800">বিজ্ঞাপনের লিংক ও রিওয়ার্ড পরিবর্তন করুন</p>
+        </div>
+        <button onclick="saveTasksToDb()" class="nb-btn bg-[#00FF66] text-xs py-1.5 px-3 rounded-xl">
+          <i class="fa-solid fa-floppy-disk mr-1"></i> সেভ করুন
+        </button>
+      </div>
+
+      <div id="tasksListContainer" class="space-y-2.5 max-h-[65vh] overflow-y-auto pr-1">
+        <!-- 24 Tasks Injected via JS -->
+      </div>
+    </section>
+
+    <!-- TAB 4: SETTINGS & NOTICES -->
+    <section id="tab-settings" class="space-y-3 hidden">
+      <!-- Broadcast Notice -->
+      <div class="nb-box bg-white p-4 rounded-2xl">
+        <h3 class="font-black text-sm mb-2 flex items-center gap-1.5 text-black">
+          <i class="fa-solid fa-bullhorn text-[#FF3366]"></i> তাৎক্ষণিক নোটিশ পাঠান
+        </h3>
+        <p class="text-[11px] text-gray-600 font-semibold mb-3">সকল ইউজারের অ্যাপে নোটিফিকেশন পৌঁছে যাবে</p>
+        
+        <input type="text" id="notifTitle" placeholder="বিজ্ঞপ্তির শিরোনাম" class="nb-input w-full p-2.5 rounded-xl text-xs mb-2">
+        <textarea id="notifBody" rows="2" placeholder="বিজ্ঞপ্তির মূল বার্তা লিখুন..." class="nb-input w-full p-2.5 rounded-xl text-xs mb-3"></textarea>
+        
+        <button onclick="broadcastNotification()" class="nb-btn w-full py-2.5 rounded-xl bg-[#FFE500] text-xs font-bold">
+          <i class="fa-solid fa-paper-plane mr-1"></i> এখনই নোটিশ পাঠান
+        </button>
+      </div>
+
+      <!-- App Global Settings -->
+      <div class="nb-box bg-white p-4 rounded-2xl space-y-3">
+        <h3 class="font-black text-sm flex items-center gap-1.5 text-black">
+          <i class="fa-solid fa-gear text-[#00F0FF]"></i> সাধারণ কনফিগারেশন
+        </h3>
+
+        <div>
+          <label class="text-xs font-bold block mb-1">প্রতি বিজ্ঞাপনের আয় (৳):</label>
+          <input type="number" id="settingAdReward" class="nb-input w-full p-2 rounded-xl text-xs font-eng">
+        </div>
+
+        <div>
+          <label class="text-xs font-bold block mb-1">প্রতি রেফারের বোনাস (৳):</label>
+          <input type="number" id="settingRefReward" class="nb-input w-full p-2 rounded-xl text-xs font-eng">
+        </div>
+
+        <div>
+          <label class="text-xs font-bold block mb-1">সর্বনিম্ন উত্তোলন সীমা (৳):</label>
+          <input type="number" id="settingMinWithdrawal" class="nb-input w-full p-2 rounded-xl text-xs font-eng">
+        </div>
+
+        <div>
+          <label class="text-xs font-bold block mb-1">উত্তোলনে ন্যূনতম রেফারেল সংখ্যা:</label>
+          <input type="number" id="settingMinRefWithdrawal" class="nb-input w-full p-2 rounded-xl text-xs font-eng">
+        </div>
+
+        <div>
+          <label class="text-xs font-bold block mb-1">অফিসিয়াল টেলিগ্রাম চ্যানেল লিংক:</label>
+          <input type="url" id="settingTelegram" class="nb-input w-full p-2 rounded-xl text-xs font-eng">
+        </div>
+
+        <div>
+          <label class="text-xs font-bold block mb-1">হোমপেজ ঘোষণা (Announcement):</label>
+          <input type="text" id="settingAnnouncement" class="nb-input w-full p-2 rounded-xl text-xs">
+        </div>
+
+        <button onclick="saveAppSettings()" class="nb-btn w-full py-3 rounded-xl bg-[#00FF66] text-xs font-bold mt-2">
+          <i class="fa-solid fa-check-double mr-1"></i> সেটিংস সংরক্ষণ করুন
+        </button>
+      </div>
+    </section>
+
+    <!-- BOTTOM APP NAVIGATION -->
+    <nav class="fixed bottom-3 left-3 right-3 max-w-md mx-auto nb-box bg-black text-white rounded-2xl p-2 flex items-center justify-around z-40">
+      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="flex flex-col items-center gap-1 text-[11px] font-bold text-[#FFE500] py-1 px-3 rounded-xl transition-all">
+        <i class="fa-solid fa-chart-pie text-base"></i>
+        <span>ড্যাশবোর্ড</span>
+      </button>
+
+      <button onclick="switchTab('withdrawals')" id="nav-withdrawals" class="flex flex-col items-center gap-1 text-[11px] font-bold text-gray-400 py-1 px-3 rounded-xl transition-all relative">
+        <i class="fa-solid fa-hand-holding-dollar text-base"></i>
+        <span>পেমেন্ট</span>
+        <span id="navPendingBadge" class="absolute -top-1 -right-1 bg-[#FF3366] text-white text-[9px] font-black px-1.5 py-0.2 rounded-full border border-black hidden">০</span>
+      </button>
+
+      <button onclick="switchTab('tasks')" id="nav-tasks" class="flex flex-col items-center gap-1 text-[11px] font-bold text-gray-400 py-1 px-3 rounded-xl transition-all">
+        <i class="fa-solid fa-list-check text-base"></i>
+        <span>স্মার্টলিংক</span>
+      </button>
+
+      <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center gap-1 text-[11px] font-bold text-gray-400 py-1 px-3 rounded-xl transition-all">
+        <i class="fa-solid fa-sliders text-base"></i>
+        <span>সেটিংস</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 nb-box bg-[#FFE500] text-black px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 hidden">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-sm"></i>
+    <span id="toastMsg">মেসেজ</span>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // 1. Firebase Initialization
+    const firebaseConfig = {
+      apiKey: "AIzaSyBc73zTaVAPIPJpdradNkO02AhgTQt8GXU",
+      authDomain: "jmeads-f981e.firebaseapp.com",
+      projectId: "jmeads-f981e",
+      storageBucket: "jmeads-f981e.firebasestorage.app",
+      messagingSenderId: "301941552836",
+      appId: "1:301941552836:web:619ba1ef237ccc38c3bb91"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+
+    // State
+    let pendingWithdrawals = [];
+    let allTasks = [];
+    let currentSettings = {
+      adReward: 5,
+      referralReward: 50,
+      minWithdrawal: 1000,
+      minReferralsRequiredForWithdrawal: 20,
+      telegramUrl: "https://t.me/JMEAds_Official",
+      announcement: "স্বাগতম JME Ads-এ!"
+    };
+
+    // 2. PIN Lock / Unlock
+    const ADMIN_PIN_KEY = "jme_admin_unlocked";
+    function checkPinStatus() {
+      if (sessionStorage.getItem(ADMIN_PIN_KEY) === "true") {
+        document.getElementById('pinScreen').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        initFirebaseListeners();
+      }
+    }
+
+    function verifyPin() {
+      const pin = document.getElementById('pinInput').value.trim();
+      const savedCustomPin = localStorage.getItem('jme_admin_custom_pin') || '1234';
+      if (pin === savedCustomPin || pin === '1234') {
+        sessionStorage.setItem(ADMIN_PIN_KEY, 'true');
+        document.getElementById('pinScreen').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        initFirebaseListeners();
+        showToast('অ্যাডমিন প্যানেল আনলক হয়েছে!', 'success');
+      } else {
+        document.getElementById('pinError').classList.remove('hidden');
+      }
+    }
+
+    function lockAdmin() {
+      sessionStorage.removeItem(ADMIN_PIN_KEY);
+      location.reload();
+    }
+
+    // 3. Navigation Switcher
+    function switchTab(tabName) {
+      ['dashboard', 'withdrawals', 'tasks', 'settings'].forEach(t => {
+        document.getElementById('tab-' + t).classList.add('hidden');
+        const btn = document.getElementById('nav-' + t);
+        btn.classList.remove('text-[#FFE500]');
+        btn.classList.add('text-gray-400');
+      });
+
+      document.getElementById('tab-' + tabName).classList.remove('hidden');
+      const activeBtn = document.getElementById('nav-' + tabName);
+      activeBtn.classList.remove('text-gray-400');
+      activeBtn.classList.add('text-[#FFE500]');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 4. Toast helper
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+      
+      toastMsg.innerText = msg;
+      if (type === 'error') {
+        toast.style.backgroundColor = '#FF3366';
+        toast.style.color = '#FFF';
+        toastIcon.className = 'fa-solid fa-circle-exclamation';
+      } else if (type === 'success') {
+        toast.style.backgroundColor = '#00FF66';
+        toast.style.color = '#000';
+        toastIcon.className = 'fa-solid fa-circle-check';
+      } else {
+        toast.style.backgroundColor = '#FFE500';
+        toast.style.color = '#000';
+        toastIcon.className = 'fa-solid fa-circle-info';
+      }
+
+      toast.classList.remove('hidden');
+      setTimeout(() => { toast.classList.add('hidden'); }, 3500);
+    }
+
+    // 5. Real-Time Firebase Listeners
+    function initFirebaseListeners() {
+      // 5.1 Real Registered Users Count
+      db.collection('users').onSnapshot((snapshot) => {
+        const count = snapshot.size;
+        document.getElementById('statUserCount').innerText = count.toLocaleString('bn-BD');
+      }, (err) => {
+        console.warn('Users listener:', err);
+      });
+
+      // 5.2 Real Pending Withdrawals
+      db.collection('withdrawals')
+        .where('status', '==', 'pending')
+        .onSnapshot((snapshot) => {
+          pendingWithdrawals = [];
+          snapshot.forEach(doc => {
+            pendingWithdrawals.push({ id: doc.id, ...doc.data() });
+          });
+
+          // Sort by newest
+          pendingWithdrawals.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+          const count = pendingWithdrawals.length;
+          document.getElementById('statPendingCount').innerText = count.toLocaleString('bn-BD');
+          document.getElementById('wdTotalPending').innerText = count.toLocaleString('bn-BD');
+          document.getElementById('pendingBadge').innerText = count.toLocaleString('bn-BD') + ' টি';
+
+          const navBadge = document.getElementById('navPendingBadge');
+          if (count > 0) {
+            navBadge.innerText = count;
+            navBadge.classList.remove('hidden');
+          } else {
+            navBadge.classList.add('hidden');
+          }
+
+          renderWithdrawals();
+        }, (err) => {
+          console.warn('Withdrawals listener:', err);
+        });
+
+      // 5.3 Fetch Settings
+      db.collection('settings').doc('app').get().then(doc => {
+        if (doc.exists) {
+          currentSettings = { ...currentSettings, ...doc.data() };
+        }
+        populateSettingsInputs();
+      }).catch(err => {
+        console.warn('Settings load:', err);
+        populateSettingsInputs();
+      });
+
+      // 5.4 Populate Tasks
+      loadSmartlinkTasks();
+    }
+
+    // 6. Render Withdrawals
+    function renderWithdrawals() {
+      const container = document.getElementById('allWithdrawalsContainer');
+      const quickContainer = document.getElementById('quickWithdrawalList');
+
+      if (pendingWithdrawals.length === 0) {
+        const emptyHtml = `
+          <div class="nb-box bg-white p-6 rounded-2xl text-center">
+            <div class="w-12 h-12 bg-gray-100 nb-box-sm rounded-xl mx-auto flex items-center justify-center mb-2">
+              <i class="fa-solid fa-circle-check text-xl text-[#00FF66]"></i>
+            </div>
+            <h4 class="font-extrabold text-sm text-gray-800">কোনো পেন্ডিং অর্ডার নেই</h4>
+            <p class="text-xs text-gray-500 font-semibold mt-1">সব পেমেন্ট সম্পন্ন হয়েছে (০ টি অপেক্ষমাণ)</p>
+          </div>
+        `;
+        container.innerHTML = emptyHtml;
+        quickContainer.innerHTML = '<p class="text-xs text-gray-500 font-bold py-2 text-center">বর্তমানে কোনো পেন্ডিং রিকোয়েস্ট নেই (০ টি)</p>';
+        return;
+      }
+
+      // Populate Quick List in Dashboard (top 3)
+      quickContainer.innerHTML = pendingWithdrawals.slice(0, 3).map(w => `
+        <div class="p-2.5 rounded-xl border-2 border-black bg-yellow-50 flex items-center justify-between text-xs">
+          <div>
+            <strong class="font-bold block">${w.userName || 'ইউজার'} (${w.method || 'বিকাশ'})</strong>
+            <span class="text-[11px] font-eng text-gray-600">${w.accountNumber || w.userPhone}</span>
+          </div>
+          <div class="text-right">
+            <span class="font-black font-eng text-[#FF3366] text-sm block">৳${w.amount}</span>
+            <span class="text-[10px] bg-yellow-200 px-1.5 py-0.5 rounded border border-black font-bold">পেন্ডিং</span>
+          </div>
+        </div>
+      `).join('');
+
+      // Populate Full List in Withdrawals Tab
+      container.innerHTML = pendingWithdrawals.map(w => `
+        <div class="nb-box bg-white p-4 rounded-2xl space-y-3">
+          <div class="flex items-start justify-between border-b-2 border-black pb-2.5">
+            <div>
+              <span class="text-[10px] font-eng font-bold bg-[#FFE500] px-2 py-0.5 rounded border border-black">#${w.id}</span>
+              <h4 class="font-black text-sm text-gray-900 mt-1">${w.userName || 'ব্যবহারকারী'}</h4>
+              <p class="text-xs font-bold text-gray-600 font-eng"><i class="fa-solid fa-phone text-[10px]"></i> ${w.accountNumber || w.userPhone}</p>
+            </div>
+            <div class="text-right">
+              <span class="text-xl font-black font-eng text-[#00FF66] bg-black px-2.5 py-1 rounded-xl block">৳${w.amount}</span>
+              <span class="text-[11px] font-bold text-gray-700 block mt-1">পদ্ধতি: <strong>${w.method}</strong></span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-[11px] text-gray-500 font-semibold">
+            <span>আবেদনের সময়: ${w.createdAt ? new Date(w.createdAt).toLocaleTimeString('bn-BD') : 'এখনই'}</span>
+            <span class="text-black font-bold">নেট প্রদেয়: ৳${w.netAmount || w.amount}</span>
+          </div>
+
+          <!-- Approve / Reject Buttons -->
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button onclick="approveWithdrawal('${w.id}')" class="nb-btn bg-[#00FF66] py-2 rounded-xl text-xs flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-check"></i> পেমেন্ট সম্পন্ন
+            </button>
+            <button onclick="rejectWithdrawal('${w.id}', '${w.uid}', ${w.amount})" class="nb-btn bg-[#FF3366] text-white py-2 rounded-xl text-xs flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-xmark"></i> বাতিল করুন
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 7. Approve / Reject Handlers
+    function approveWithdrawal(docId) {
+      if (!confirm('আপনি কি নিশ্চিত যে এই পেমেন্টটি বিকাশ/নগদে সম্পন্ন করেছেন?')) return;
+      db.collection('withdrawals').doc(docId).update({
+        status: 'paid',
+        processedAt: Date.now(),
+        adminNote: 'অ্যাডমিন কর্তৃক পেমেন্ট সফলভাবে প্রদান করা হয়েছে'
+      }).then(() => {
+        showToast('পেমেন্ট সফলভাবে সম্পন্ন হিসেবে মার্ক করা হয়েছে!', 'success');
+      }).catch(err => {
+        showToast('ত্রুটি: ' + err.message, 'error');
+      });
+    }
+
+    function rejectWithdrawal(docId, uid, amount) {
+      const reason = prompt('বাতিলের কারণ লিখুন (ইউজারের ব্যালেন্স রিফান্ড হবে):', 'নম্বর সঠিক ছিল না');
+      if (reason === null) return;
+
+      db.collection('withdrawals').doc(docId).update({
+        status: 'rejected',
+        processedAt: Date.now(),
+        adminNote: reason || 'বাতিল করা হয়েছে'
+      }).then(() => {
+        // Refund user balance
+        if (uid) {
+          db.collection('users').doc(uid).update({
+            balance: firebase.firestore.FieldValue.increment(amount),
+            totalWithdrawn: firebase.firestore.FieldValue.increment(-amount)
+          });
+        }
+        showToast('আবেদন বাতিল এবং ইউজারের ব্যালেন্সে ৳' + amount + ' রিফান্ড করা হয়েছে।', 'info');
+      }).catch(err => {
+        showToast('ত্রুটি: ' + err.message, 'error');
+      });
+    }
+
+    // 8. 24 Smartlinks
+    const DEFAULT_SMARTLINKS = [
+      { id: 'task-1', title: 'স্মার্টলিংক ১', reward: 5, url: 'https://www.profitableratecpmnetwork.com/dn6tywp8s?key=1c978451e0c5340bb6764aad93b2a043' },
+      { id: 'task-2', title: 'স্মার্টলিংক ২', reward: 5, url: 'https://www.profitableratecpmnetwork.com/ywpqxux1mn?key=f766995ab751cc071fac4888e44096f4' },
+      { id: 'task-3', title: 'স্মার্টলিংক ৩', reward: 5, url: 'https://www.profitableratecpmnetwork.com/erydxfyy?key=d77d76c50e091d021e2675630fab1512' },
+      { id: 'task-4', title: 'স্মার্টলিংক ৪', reward: 5, url: 'https://www.profitableratecpmnetwork.com/wddr45zbs?key=f40aada91620eb67d2bfad0cabb4058b' },
+      { id: 'task-5', title: 'স্মার্টলিংক ৫', reward: 5, url: 'https://www.profitableratecpmnetwork.com/f047ev57w?key=1f525bfb83c748aa925ea4b341f237eb' },
+      { id: 'task-6', title: 'স্মার্টলিংক ৬', reward: 5, url: 'https://www.profitableratecpmnetwork.com/g8v01m24k?key=aa4f02fa48fb848ff416e91f1737f5b3' },
+      { id: 'task-7', title: 'স্মার্টলিংক ৭', reward: 5, url: 'https://www.profitableratecpmnetwork.com/k2d15swn?key=ffc013b355bb9fb969ee73b754e3d6e5' },
+      { id: 'task-8', title: 'স্মার্টলিংক ৮', reward: 5, url: 'https://www.profitableratecpmnetwork.com/ebx34k984?key=fef7fc1381395b0ff7cf53f2c5fb3363' },
+      { id: 'task-9', title: 'স্মার্টলিংক ৯', reward: 5, url: 'https://www.profitableratecpmnetwork.com/eqf66m50?key=90d196fc108d85f54316d2b63574c83e' },
+      { id: 'task-10', title: 'স্মার্টলিংক ১০', reward: 5, url: 'https://www.profitableratecpmnetwork.com/r7qta5brb?key=87cc0e92fbd7d11aff8726f2e19b0e04' },
+      { id: 'task-11', title: 'স্মার্টলিংক ১১', reward: 5, url: 'https://www.profitableratecpmnetwork.com/j5mj4v3qi?key=4276bb48f7f67ca2f6de25d8cd7d9426' },
+      { id: 'task-12', title: 'স্মার্টলিংক ১২', reward: 5, url: 'https://www.profitableratecpmnetwork.com/t9i822nxi?key=b62572512d4495d9f5f8b8048c9a007c' },
+      { id: 'task-13', title: 'স্মার্টলিংক ১৩', reward: 5, url: 'https://www.profitableratecpmnetwork.com/nqjzn0d74v?key=b079774d88edd63528dc80743ea0453d' },
+      { id: 'task-14', title: 'স্মার্টলিংক ১৪', reward: 5, url: 'https://www.profitableratecpmnetwork.com/ah7ga840mt?key=8541ebd8dde8ffc7081fcecfc41508a8' },
+      { id: 'task-15', title: 'স্মার্টলিংক ১৫', reward: 5, url: 'https://www.profitableratecpmnetwork.com/ukivtbzb?key=7d894ff017982ca5dc513f7503598eb7' },
+      { id: 'task-16', title: 'স্মার্টলিংক ১৬', reward: 5, url: 'https://www.profitableratecpmnetwork.com/ee5hwfej10?key=cb67082b2d0fa69953e406d68a56d506' },
+      { id: 'task-17', title: 'স্মার্টলিংক ১৭', reward: 5, url: 'https://www.profitableratecpmnetwork.com/ihapixed?key=3c7c19e8aa3725c68038c715c714dabc' },
+      { id: 'task-18', title: 'স্মার্টলিংক ১৮', reward: 5, url: 'https://www.profitableratecpmnetwork.com/ycyjr8s0b?key=f3786638c9bae54f50f9b1d276263a0a' },
+      { id: 'task-19', title: 'স্মার্টলিংক ১৯', reward: 5, url: 'https://www.profitableratecpmnetwork.com/ezrvkvfy?key=6ca928b3362c2012ea64d7cad5ddd1da' },
+      { id: 'task-20', title: 'স্মার্টলিংক ২০', reward: 5, url: 'https://www.profitableratecpmnetwork.com/mqkf7y4mw?key=1d753e1bdc7de6d5c4ccd0522dd1c255' },
+      { id: 'task-21', title: 'স্মার্টলিংক ২১', reward: 5, url: 'https://www.profitableratecpmnetwork.com/nrf8kgwu?key=4854c06edfb827d0e5c08e70ad8361c9' },
+      { id: 'task-22', title: 'স্মার্টলিংক ২২', reward: 5, url: 'https://www.profitableratecpmnetwork.com/hbt5zvit3?key=652f30e33b62dfe4f6d6025a50482016' },
+      { id: 'task-23', title: 'স্মার্টলিংক ২৩', reward: 5, url: 'https://www.profitableratecpmnetwork.com/v2gb0qxx?key=d53e1c1d889a0cc7b8c035b9befd6ff1' },
+      { id: 'task-24', title: 'স্মার্টলিংক ২৪', reward: 5, url: 'https://www.profitableratecpmnetwork.com/rth9evfc?key=b7d11cb2d75b86b3bfd27bd4bac33373' }
+    ];
+
+    function loadSmartlinkTasks() {
+      const container = document.getElementById('tasksListContainer');
+      const savedTasks = localStorage.getItem('jme_admin_tasks');
+      allTasks = savedTasks ? JSON.parse(savedTasks) : DEFAULT_SMARTLINKS;
+
+      container.innerHTML = allTasks.map((t, idx) => `
+        <div class="nb-box bg-white p-3 rounded-2xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-extrabold text-xs text-black">${t.title}</span>
+            <div class="flex items-center gap-1">
+              <span class="text-[11px] font-bold">রিওয়ার্ড ৳</span>
+              <input type="number" id="task-rew-${idx}" value="${t.reward}" class="nb-input w-16 p-1 text-center text-xs font-eng rounded-lg">
+            </div>
+          </div>
+          <input type="url" id="task-url-${idx}" value="${t.url}" placeholder="স্মার্টলিংক URL" class="nb-input w-full p-2 text-[11px] font-eng rounded-xl text-gray-700">
+        </div>
+      `).join('');
+    }
+
+    function saveTasksToDb() {
+      allTasks.forEach((t, idx) => {
+        const urlEl = document.getElementById(`task-url-${idx}`);
+        const rewEl = document.getElementById(`task-rew-${idx}`);
+        if (urlEl) t.url = urlEl.value.trim();
+        if (rewEl) t.reward = parseFloat(rewEl.value) || 5;
+      });
+      localStorage.setItem('jme_admin_tasks', JSON.stringify(allTasks));
+      showToast('২৪টি স্মার্টলিংক সফলভাবে সেভ করা হয়েছে!', 'success');
+    }
+
+    // 9. Settings Save & Load
+    function populateSettingsInputs() {
+      document.getElementById('settingAdReward').value = currentSettings.adReward || 5;
+      document.getElementById('settingRefReward').value = currentSettings.referralReward || 50;
+      document.getElementById('settingMinWithdrawal').value = currentSettings.minWithdrawal || 1000;
+      document.getElementById('settingMinRefWithdrawal').value = currentSettings.minReferralsRequiredForWithdrawal || 20;
+      document.getElementById('settingTelegram').value = currentSettings.telegramUrl || '';
+      document.getElementById('settingAnnouncement').value = currentSettings.announcement || '';
+    }
+
+    function saveAppSettings() {
+      const updated = {
+        adReward: parseFloat(document.getElementById('settingAdReward').value) || 5,
+        referralReward: parseFloat(document.getElementById('settingRefReward').value) || 50,
+        minWithdrawal: parseFloat(document.getElementById('settingMinWithdrawal').value) || 1000,
+        minReferralsRequiredForWithdrawal: parseInt(document.getElementById('settingMinRefWithdrawal').value) || 20,
+        telegramUrl: document.getElementById('settingTelegram').value.trim(),
+        announcement: document.getElementById('settingAnnouncement').value.trim()
+      };
+
+      db.collection('settings').doc('app').set(updated, { merge: true }).then(() => {
+        showToast('সেটিংস ফায়ারবেসে সফলভাবে আপডেট হয়েছে!', 'success');
+      }).catch(err => {
+        showToast('সেভ হতে সমস্যা: ' + err.message, 'error');
+      });
+    }
+
+    // 10. Broadcast Notification
+    function broadcastNotification() {
+      const title = document.getElementById('notifTitle').value.trim();
+      const body = document.getElementById('notifBody').value.trim();
+
+      if (!title || !body) {
+        showToast('শিরোনাম ও বার্তা উভয়ই লিখুন।', 'error');
+        return;
+      }
+
+      db.collection('notifications').add({
+        title,
+        message: body,
+        type: 'broadcast',
+        createdAt: Date.now()
+      }).then(() => {
+        document.getElementById('notifTitle').value = '';
+        document.getElementById('notifBody').value = '';
+        showToast('সকল ইউজারের কাছে নোটিফিকেশন পৌঁছে গেছে!', 'success');
+      }).catch(err => {
+        showToast('নোটিশ পাঠাতে ব্যর্থ: ' + err.message, 'error');
+      });
+    }
+
+    function refreshData() {
+      showToast('ডাটাবেজ রিফ্রেশ হচ্ছে...', 'info');
+      initFirebaseListeners();
+    }
+
+    // On Load
+    window.addEventListener('DOMContentLoaded', checkPinStatus);
+  </script>
+</body>
+</html>

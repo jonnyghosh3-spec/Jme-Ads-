@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "JME Ads - প্রিমিয়াম আর্নিং প্ল্যাটফর্ম",
+  "short_name": "JME Ads",
+  "description": "বাংলাদেশের বিশ্বস্ত অনলাইন আর্নিং প্ল্যাটফর্ম। বিজ্ঞাপন দেখে এবং বন্ধুদের রেফার করে প্রতিদিন আয় করুন।",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#087F3D",
+  "theme_color": "#087F3D",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ]
+}

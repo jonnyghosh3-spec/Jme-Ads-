@@ -1,0 +1,21 @@
+{
+  "short_name": "JME Ads",
+  "name": "JME Ads - প্রিমিয়াম আর্নিং প্ল্যাটফর্ম",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#087F3D",
+  "theme_color": "#087F3D",
+  "display": "standalone",
+  "orientation": "portrait"
+}
