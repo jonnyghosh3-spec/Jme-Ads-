@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useApp } from '../context/AppContext';
 import { 
   X, 
   Download, 
@@ -17,6 +18,7 @@ interface DownloadAppModalProps {
 }
 
 export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({ isOpen, onClose }) => {
+  const { settings, showToast } = useApp();
   const [copied, setCopied] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -57,21 +59,23 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({ isOpen, onCl
       }
       setInstallPrompt(null);
     } else {
-      // Direct Web Launcher Download
+      // Direct APK Download
       handleDownloadAppFile();
     }
   };
 
   const handleDownloadAppFile = () => {
-    // Generate an installable web shortcut file that mobile devices recognize
-    const content = `[InternetShortcut]\nURL=${websiteUrl}\nIconIndex=0`;
-    const blob = new Blob([content], { type: 'application/octet-stream' });
+    const targetUrl = settings.apkDownloadUrl && settings.apkDownloadUrl.trim() !== ''
+      ? settings.apkDownloadUrl.trim()
+      : '/downloads/JME-Ads.apk';
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'JME-Ads-Official-App.url';
+    link.href = targetUrl;
+    link.download = 'JME-Ads.apk';
+    link.target = '_blank';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    showToast('JME Ads অ্যান্ড্রয়েড অ্যাপ (APK) ডাউনলোড শুরু হয়েছে!', 'success');
   };
 
   return (

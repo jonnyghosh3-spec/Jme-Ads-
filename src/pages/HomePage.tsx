@@ -4,6 +4,7 @@ import { PWAInstallButton } from '../components/PWAInstallButton';
 import { WelcomeBonusModal } from '../components/WelcomeBonusModal';
 import { RulesNoticeModal } from '../components/RulesNoticeModal';
 import { ReviewsSection } from '../components/ReviewsSection';
+import { AdDisplay } from '../components/AdDisplay';
 import { 
   Wallet, 
   ArrowRight, 
@@ -247,6 +248,9 @@ export const HomePage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSuppor
         </button>
       </div>
 
+      {/* Sponsored Banner Ad (Configurable from Admin Panel) */}
+      <AdDisplay htmlSnippet={settings.bannerAdHtml} type="banner" />
+
       {/* 7. Quick Services Grid */}
       <div>
         <div className="flex items-center justify-between mb-1.5 px-1">
@@ -372,6 +376,9 @@ export const HomePage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSuppor
           <span>কপি লিংক</span>
         </button>
       </div>
+
+      {/* Sponsored Native Ad (Configurable from Admin Panel) */}
+      <AdDisplay htmlSnippet={settings.nativeAdHtml} type="native" />
 
       {/* 9. Premium Smartlink Tasks */}
       <div>

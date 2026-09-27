@@ -327,8 +327,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (snap.exists()) {
             const data = snap.data() as UserProfile;
             setUser(data);
-          } else {
-            // Document might not exist yet if just registered, handled in registration/google login
           }
         } catch (err) {
           handleFirestoreError(err, OperationType.GET, `users/${fbUser.uid}`);
@@ -337,6 +335,69 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setLoading(false);
     });
     return () => unsubscribe();
+  }, []);
+
+  // Real-time synchronization of current user profile (balance, referrals, status) across all devices
+  useEffect(() => {
+    if (!user?.uid) return;
+    try {
+      const unsub = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+        if (docSnap.exists()) {
+          const liveData = docSnap.data() as UserProfile;
+          setUser((prev) => {
+            if (!prev) return liveData;
+            if (
+              prev.balance !== liveData.balance ||
+              prev.referralEarned !== liveData.referralEarned ||
+              prev.totalEarned !== liveData.totalEarned ||
+              prev.accountStatus !== liveData.accountStatus
+            ) {
+              return { ...prev, ...liveData };
+            }
+            return prev;
+          });
+        }
+      }, (err) => {
+        console.warn('Live user listener note:', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Setup live user listener err:', e);
+    }
+  }, [user?.uid]);
+
+  // Real-time synchronization of global settings from Firestore
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(doc(db, 'settings', 'app_config'), (snap) => {
+        if (snap.exists()) {
+          const liveSettings = snap.data() as Partial<AppSettings>;
+          setSettings((prev) => ({ ...prev, ...liveSettings }));
+        }
+      }, (err) => {
+        console.warn('Live settings listener note:', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Setup live settings listener err:', e);
+    }
+  }, []);
+
+  // Real-time synchronization of tasks from Firestore
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'tasks'), (snap) => {
+        if (!snap.empty) {
+          const liveTasks = snap.docs.map(d => ({ ...d.data(), id: d.id })) as TaskItem[];
+          setTasks(liveTasks);
+        }
+      }, (err) => {
+        console.warn('Live tasks listener note:', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Setup live tasks listener err:', e);
+    }
   }, []);
 
   // Window Focus / Visibility detection for early return rule!
@@ -374,9 +435,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const cleanEmail = email.trim().toLowerCase();
       const cleanPhone = phone.trim();
 
-      // Check if user already exists
+      // Check if user already exists in Firestore or local cache
+      try {
+        const qEmail = query(collection(db, 'users'), where('email', '==', cleanEmail), limit(1));
+        const snapEmail = await getDocs(qEmail);
+        if (!snapEmail.empty) {
+          const msg = '❌ এই ইমেইল দিয়ে ইতোমধ্যে একটি অ্যাকাউন্ট খোলা আছে! অনুগ্রহ করে লগইন করুন।';
+          showToast(msg, 'warning');
+          return { success: false, message: msg };
+        }
+
+        if (cleanPhone) {
+          const qPhone = query(collection(db, 'users'), where('phone', '==', cleanPhone), limit(1));
+          const snapPhone = await getDocs(qPhone);
+          if (!snapPhone.empty) {
+            const msg = '❌ এই মোবাইল নম্বর দিয়ে ইতোমধ্যে একটি অ্যাকাউন্ট খোলা আছে! অনুগ্রহ করে লগইন করুন।';
+            showToast(msg, 'warning');
+            return { success: false, message: msg };
+          }
+        }
+      } catch (checkErr) {
+        console.warn('Firestore user duplicate check note:', checkErr);
+      }
+
       const existingUser = allUsersList.find(
-        u => u.email.toLowerCase() === cleanEmail || u.phone === cleanPhone
+        u => u.email.toLowerCase() === cleanEmail || (cleanPhone && u.phone === cleanPhone)
       );
       if (existingUser) {
         const msg = '❌ এই ইমেইল বা মোবাইল নম্বর দিয়ে ইতোমধ্যে একটি অ্যাকাউন্ট খোলা আছে! অনুগ্রহ করে লগইন করুন।';
@@ -441,17 +524,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           createdAtServer: serverTimestamp()
         });
       } catch (fsErr) {
-        handleFirestoreError(fsErr, OperationType.WRITE, `users/${uid}`);
+        console.warn('Firestore write user doc note:', fsErr);
       }
 
-      // Check referral reward if registered with a valid referral code
+      // Check referral reward across all devices via Firestore
       if (newUser.referredBy) {
-        const matchingReferrer = allUsersList.find(u => u.referralCode === newUser.referredBy);
+        const targetRefCode = newUser.referredBy.trim().toUpperCase();
+        let matchingReferrer: UserProfile | null = null;
+
+        // 1. Query Firestore for the referrer's account across all devices
+        try {
+          const qRef = query(collection(db, 'users'), where('referralCode', '==', targetRefCode), limit(1));
+          const snapRef = await getDocs(qRef);
+          if (!snapRef.empty) {
+            matchingReferrer = snapRef.docs[0].data() as UserProfile;
+          }
+        } catch (fsRefQueryErr) {
+          console.warn('Firestore referral lookup error:', fsRefQueryErr);
+        }
+
+        // 2. Fallback to local user cache
+        if (!matchingReferrer) {
+          matchingReferrer = allUsersList.find(u => u.referralCode === targetRefCode) || null;
+        }
+
         if (matchingReferrer && matchingReferrer.uid !== newUser.uid) {
-          const rewardAmount = settings.referralReward;
-          matchingReferrer.balance += rewardAmount;
-          matchingReferrer.referralEarned += rewardAmount;
-          matchingReferrer.totalEarned += rewardAmount;
+          const rewardAmount = settings.referralReward || 50;
 
           const refItem: ReferralItem = {
             id: 'ref_' + Date.now(),
@@ -459,7 +557,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             referrerCode: matchingReferrer.referralCode,
             referredUid: newUser.uid,
             referredName: newUser.name,
-            referredPhoneMasked: newUser.phone.slice(0, 3) + '****' + newUser.phone.slice(-3),
+            referredPhoneMasked: newUser.phone ? (newUser.phone.slice(0, 3) + '****' + newUser.phone.slice(-3)) : '017****',
             rewardAmount,
             status: 'completed',
             createdAt: Date.now()
@@ -470,13 +568,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             uid: matchingReferrer.uid,
             type: 'referral_reward',
             amount: rewardAmount,
-            balanceBefore: matchingReferrer.balance - rewardAmount,
-            balanceAfter: matchingReferrer.balance,
+            balanceBefore: matchingReferrer.balance,
+            balanceAfter: matchingReferrer.balance + rewardAmount,
             description: `রেফারেল বোনাস (${newUser.name})`,
             status: 'completed',
             createdAt: Date.now()
           };
 
+          // Instantly credit referrer in Firestore database
           try {
             await updateDoc(doc(db, 'users', matchingReferrer.uid), {
               balance: increment(rewardAmount),

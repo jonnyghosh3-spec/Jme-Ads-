@@ -104,4 +104,8 @@ export interface AppSettings {
   telegramUrl: string; // default empty
   supportWhatsapp: string;
   announcement: string;
+  bannerAdHtml?: string; // HTML/Script code for Banner Ads
+  nativeAdHtml?: string; // HTML/Script code for Native Ads
+  popunderAdUrl?: string; // Popunder or Direct Ad URL
+  apkDownloadUrl?: string; // Custom APK download link
 }
