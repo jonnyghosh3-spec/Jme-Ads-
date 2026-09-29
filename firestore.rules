@@ -32,6 +32,18 @@ service cloud.firestore {
       allow write: if true;
     }
 
+    // Micro Jobs & Special Offers: Readable and writable
+    match /micro_jobs/{jobId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Remote Job Submissions & Robot Verification Proofs
+    match /job_submissions/{subId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // Withdrawals
     match /withdrawals/{withdrawalId} {
       allow read: if true;
@@ -61,6 +73,12 @@ service cloud.firestore {
 
     // Settings
     match /settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Contact Messages from Users to Admin
+    match /contact_messages/{msgId} {
       allow read: if true;
       allow write: if true;
     }

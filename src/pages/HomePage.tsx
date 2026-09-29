@@ -22,7 +22,8 @@ import {
   Flame, 
   Send, 
   CheckSquare, 
-  TrendingUp 
+  TrendingUp,
+  Briefcase
 } from 'lucide-react';
 
 export const HomePage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSupport }) => {
@@ -211,6 +212,36 @@ export const HomePage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSuppor
         </button>
       </div>
 
+      {/* Featured Micro Jobs & Video Offers Banner (Admin Toggleable) */}
+      {settings.showMicroJobsSection !== false && (
+        <div 
+          onClick={() => setActiveTab('microjobs')}
+          className="p-3.5 rounded-3xl bg-gradient-to-r from-emerald-900 via-teal-900 to-green-900 text-white shadow-md border border-emerald-500/30 flex items-center justify-between gap-3 cursor-pointer hover:shadow-lg transition-all active:scale-98"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 flex items-center justify-center shrink-0">
+              <Briefcase className="w-5 h-5 text-emerald-300" />
+            </div>
+            <div className="truncate">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400 text-amber-950">
+                  নতুন অফার
+                </span>
+                <span className="text-[10px] text-emerald-300 font-bold truncate">ভিডিও দেখে আয়</span>
+              </div>
+              <h4 className="font-extrabold text-xs sm:text-sm text-white truncate">
+                মাইক্রো জব ও অফার লিস্ট
+              </h4>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 text-xs font-bold text-emerald-300 bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 shrink-0">
+            <span>দেখুন</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      )}
+
       {/* 5. Short Notice Strip */}
       <div className="p-2.5 px-3 rounded-xl bg-amber-50 border border-amber-200 text-xs flex items-center gap-2 text-amber-900">
         <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -230,7 +261,9 @@ export const HomePage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSuppor
           </div>
           <div className="truncate">
             <span className="text-[10px] text-red-100 font-bold uppercase block">ভিডিও ১</span>
-            <span className="text-xs font-extrabold text-white truncate block">কাজের নিয়ম</span>
+            <span className="text-xs font-extrabold text-white truncate block">
+              {settings.youtubeVideo1Title || 'কাজের নিয়ম'}
+            </span>
           </div>
         </button>
 
@@ -243,7 +276,9 @@ export const HomePage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSuppor
           </div>
           <div className="truncate">
             <span className="text-[10px] text-rose-100 font-bold uppercase block">ভিডিও ২</span>
-            <span className="text-xs font-extrabold text-white truncate block">উত্তোলন নিয়ম</span>
+            <span className="text-xs font-extrabold text-white truncate block">
+              {settings.youtubeVideo2Title || 'উত্তোলন নিয়ম'}
+            </span>
           </div>
         </button>
       </div>
@@ -261,6 +296,21 @@ export const HomePage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSuppor
         </div>
 
         <div className="grid grid-cols-4 gap-2">
+          {/* Micro Jobs */}
+          <button
+            onClick={() => setActiveTab('microjobs')}
+            className="flex flex-col items-center justify-center p-2 rounded-2xl bg-white border border-emerald-200 shadow-2xs hover:border-emerald-400 active:scale-95 transition-all cursor-pointer relative"
+          >
+            <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.2 rounded-full">
+              নতুন
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center mb-1">
+              <Briefcase className="w-5 h-5" />
+            </div>
+            <span className="text-[11px] font-bold text-gray-800">মাইক্রো জব</span>
+            <span className="text-[9px] text-teal-600 font-semibold">ভিডিও অফার</span>
+          </button>
+
           {/* Tasks */}
           <button
             onClick={() => setActiveTab('tasks')}

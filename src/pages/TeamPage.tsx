@@ -53,9 +53,9 @@ export const TeamPage: React.FC = () => {
     }
   };
 
-  const userReferrals = referrals.filter(r => r.referrerUid === user?.uid);
-  const totalReferralEarnings = userReferrals.reduce((sum, r) => sum + r.rewardAmount, 0) || (user?.referralEarned || 0);
-  const totalCount = userReferrals.length;
+  const userReferrals = referrals.filter(r => r.referrerUid === user?.uid || r.referrerCode === user?.referralCode);
+  const totalCount = Math.max(user?.referralCount || 0, userReferrals.length);
+  const totalReferralEarnings = Math.max(user?.referralEarned || 0, userReferrals.reduce((sum, r) => sum + r.rewardAmount, 0));
   const displayReferralList = userReferrals;
 
   return (

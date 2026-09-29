@@ -24,7 +24,8 @@ import {
   orderBy,
   limit,
   serverTimestamp,
-  increment
+  increment,
+  deleteDoc
 } from 'firebase/firestore';
 
 export const firebaseConfig = {
@@ -95,7 +96,8 @@ export {
   orderBy,
   limit,
   serverTimestamp,
-  increment
+  increment,
+  deleteDoc
 };
 
 export type { FirebaseUser };

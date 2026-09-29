@@ -7,7 +7,10 @@ import {
   WithdrawalItem, 
   ReferralItem, 
   NotificationItem, 
-  AppSettings 
+  AppSettings,
+  MicroJobItem,
+  JobSubmissionItem,
+  ContactMessageItem
 } from '../types';
 import { DEFAULT_TASKS, DEFAULT_APP_SETTINGS } from '../data/defaultTasks';
 import { 
@@ -24,6 +27,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   collection,
   query,
   where,
@@ -81,6 +85,34 @@ interface AppContextType {
   spinWheel: () => { reward: number; index: number; success: boolean; message?: string };
   // Welcome Bonus
   claimWelcomeBonus: (amount?: number) => void;
+  // Micro Jobs & Special Offers
+  microJobs: MicroJobItem[];
+  activeMicroJob: MicroJobItem | null;
+  microJobSecondsLeft: number;
+  selectedJobForDetails: MicroJobItem | null;
+  setSelectedJobForDetails: (job: MicroJobItem | null) => void;
+  startMicroJob: (job: MicroJobItem) => void;
+  completeMicroJob: () => void;
+  cancelMicroJob: () => void;
+  submitJobProof: (data: {
+    jobId: string;
+    jobTitle: string;
+    startScreenshotUrl?: string;
+    endScreenshotUrl?: string;
+    requiredSeconds: number;
+    spentSeconds: number;
+    proofText?: string;
+    reward: number;
+  }) => Promise<{ success: boolean; message?: string }>;
+  jobSubmissions: JobSubmissionItem[];
+  requestPublisherUpgrade: (trxId: string, method: string) => Promise<{ success: boolean; message?: string }>;
+  adminApproveJobSubmission: (submissionId: string) => Promise<void>;
+  adminRejectJobSubmission: (submissionId: string, reason?: string) => Promise<void>;
+  adminApprovePublisherUpgrade: (userId: string) => Promise<void>;
+  adminRejectPublisherUpgrade: (userId: string, reason?: string) => Promise<void>;
+  adminAddMicroJob: (job: Omit<MicroJobItem, 'id' | 'createdAt'>) => Promise<void>;
+  adminUpdateMicroJob: (id: string, updates: Partial<MicroJobItem>) => Promise<void>;
+  adminDeleteMicroJob: (id: string) => Promise<void>;
   // Admin methods
   adminUpdateUserBalance: (uid: string, delta: number, reason: string) => void;
   adminToggleUserStatus: (uid: string, status: 'active' | 'suspended') => void;
@@ -94,6 +126,13 @@ interface AppContextType {
   allWithdrawalsList: WithdrawalItem[];
   allTransactionsList: TransactionItem[];
   markNotificationRead: (id: string) => void;
+  showAdminModal: boolean;
+  setShowAdminModal: (show: boolean) => void;
+  // Contact Messages Direct To Admin
+  contactMessages: ContactMessageItem[];
+  submitContactMessage: (msg: { name: string; contact: string; subject?: string; message: string }) => Promise<{ success: boolean; message?: string }>;
+  adminDeleteMessage: (id: string) => Promise<void>;
+  adminMarkMessageRead: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -107,8 +146,72 @@ const STORAGE_KEYS = {
   NOTIFICATIONS: 'jme_notifications',
   SETTINGS: 'jme_settings',
   ALL_USERS: 'jme_all_users',
-  SAVED_REF: 'jme_pending_ref_code'
+  SAVED_REF: 'jme_pending_ref_code',
+  MESSAGES: 'jme_contact_messages'
 };
+
+const DEFAULT_MICRO_JOBS: MicroJobItem[] = [
+  {
+    id: 'mj_youtube_1',
+    title: 'ইউটিউব ভিডিও দেখুন ও ইনকাম করুন (২ মিনিট)',
+    category: 'youtube',
+    categoryLabel: 'ইউটিউব ভিডিও',
+    description: 'ভিডিওটি সম্পূর্ণ ১২০ সেকেন্ড (২ মিনিট) মনোযোগ সহকারে দেখুন। ভিডিও চলাকালীন পেজ বন্ধ করবেন না। টাইমার শেষ হলে স্বয়ংক্রিয়ভাবে ৳১০ টাকা আপনার ব্যালেন্সে যোগ হবে।',
+    url: 'https://www.youtube.com',
+    requiredDurationSeconds: 120,
+    reward: 10,
+    priority: 100,
+    active: true,
+    totalSubmissions: 42,
+    dailyLimit: 1,
+    createdAt: Date.now() - 86400000
+  },
+  {
+    id: 'mj_subscribe_2',
+    title: 'ইউটিউব চ্যানেল সাবস্ক্রাইব ও বেল আইকন',
+    category: 'subscribe',
+    categoryLabel: 'চ্যানেল সাবস্ক্রাইব',
+    description: 'আমাদের ইউটিউব চ্যানেলে প্রবেশ করে সাবস্ক্রাইব করুন এবং বেল আইকনে ক্লিক করুন। কমপক্ষে ৬০ সেকেন্ড অবস্থান করুন।',
+    url: 'https://www.youtube.com',
+    requiredDurationSeconds: 60,
+    reward: 8,
+    priority: 90,
+    active: true,
+    totalSubmissions: 35,
+    dailyLimit: 1,
+    createdAt: Date.now() - 72000000
+  },
+  {
+    id: 'mj_website_3',
+    title: 'স্পনসর ওয়েবসাইট ভিজিট ও স্ক্রোল',
+    category: 'website',
+    categoryLabel: 'ওয়েবসাইট ভিজিট',
+    description: 'স্পনসর ওয়েবসাইটে প্রবেশ করে বিভিন্ন আর্টিকেল মনোযোগ দিয়ে ৪৫ সেকেন্ড ধরে স্ক্রোল ও রিড করুন।',
+    url: 'https://www.google.com',
+    requiredDurationSeconds: 45,
+    reward: 5,
+    priority: 80,
+    active: true,
+    totalSubmissions: 58,
+    dailyLimit: 1,
+    createdAt: Date.now() - 50000000
+  },
+  {
+    id: 'mj_telegram_4',
+    title: 'টেলিগ্রাম গ্রুপ জয়েন ও পিন পোস্ট ভিউ',
+    category: 'special',
+    categoryLabel: 'টেলিগ্রাম টাস্ক',
+    description: 'আমাদের অফিসিয়াল টেলিগ্রাম চ্যানেলে জয়েন করুন এবং পিন পোস্টটি ৩০ সেকেন্ড দেখে বোনাস গ্রহণ করুন।',
+    url: 'https://t.me/JMEAds_Official',
+    requiredDurationSeconds: 30,
+    reward: 5,
+    priority: 70,
+    active: true,
+    totalSubmissions: 89,
+    dailyLimit: 1,
+    createdAt: Date.now() - 30000000
+  }
+];
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -122,6 +225,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const saved = localStorage.getItem(STORAGE_KEYS.TASKS);
     return saved ? JSON.parse(saved) : DEFAULT_TASKS;
   });
+  const [microJobs, setMicroJobs] = useState<MicroJobItem[]>(() => {
+    const saved = localStorage.getItem('jme_micro_jobs');
+    return saved ? JSON.parse(saved) : DEFAULT_MICRO_JOBS;
+  });
+  const [activeMicroJob, setActiveMicroJob] = useState<MicroJobItem | null>(null);
+  const [microJobSecondsLeft, setMicroJobSecondsLeft] = useState<number>(0);
+  const [selectedJobForDetails, setSelectedJobForDetails] = useState<MicroJobItem | null>(null);
+  const [jobSubmissions, setJobSubmissions] = useState<JobSubmissionItem[]>([]);
+  const [contactMessages, setContactMessages] = useState<ContactMessageItem[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.MESSAGES);
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
     return saved ? JSON.parse(saved) : DEFAULT_APP_SETTINGS;
@@ -222,6 +338,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(allUsersList));
   }, [allUsersList]);
 
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(contactMessages));
+  }, [contactMessages]);
+
   // Check URL for referral param or /ref/:code
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -243,7 +363,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, []);
 
-  // Dynamically load external data.json if present on hosting/server
+  // Dynamically load external data.json ONLY if local storage has no settings saved
   useEffect(() => {
     fetch('./data.json')
       .then((res) => {
@@ -252,7 +372,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       })
       .then((data) => {
         if (!data) return;
-        if (data.settings) {
+        // Never overwrite admin saved settings!
+        const existingSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+        if (data.settings && !existingSettings) {
           setSettings((prev) => ({ ...prev, ...data.settings }));
         }
         if (Array.isArray(data.tasks) && data.tasks.length > 0) {
@@ -265,6 +387,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       .catch(() => {
         // Silently ignore if data.json is not present or offline
       });
+  }, []);
+
+  // Listen for contact messages for admin
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'contact_messages'), (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map(d => ({ ...d.data(), id: d.id })) as ContactMessageItem[];
+          list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          setContactMessages(list);
+          localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(list));
+        }
+      }, (err) => {
+        console.warn('Contact messages listener note:', err);
+      });
+      return () => unsub();
+    } catch (e) {}
   }, []);
 
   // Listen for real-time broadcast notifications from Firestore and show browser push
@@ -349,6 +488,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             if (
               prev.balance !== liveData.balance ||
               prev.referralEarned !== liveData.referralEarned ||
+              prev.referralCount !== liveData.referralCount ||
               prev.totalEarned !== liveData.totalEarned ||
               prev.accountStatus !== liveData.accountStatus
             ) {
@@ -365,6 +505,50 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.warn('Setup live user listener err:', e);
     }
   }, [user?.uid]);
+
+  // Real-time synchronization of user's referrals list from Firestore
+  useEffect(() => {
+    if (!user?.uid) return;
+    try {
+      const qRef = query(collection(db, 'referrals'), where('referrerUid', '==', user.uid));
+      const unsub = onSnapshot(qRef, (snap) => {
+        const liveReferrals = snap.docs.map(d => ({ ...d.data(), id: d.id })) as ReferralItem[];
+        liveReferrals.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        setReferrals(liveReferrals);
+      }, (err) => {
+        console.warn('Live referrals listener note:', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Setup live referrals listener err:', e);
+    }
+  }, [user?.uid]);
+
+  // Real-time synchronization of Micro Jobs / Offers from Firestore
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'micro_jobs'), (snap) => {
+        if (!snap.empty) {
+          const liveJobs = snap.docs.map(d => ({ ...d.data(), id: d.id })) as MicroJobItem[];
+          liveJobs.sort((a, b) => (b.priority || 0) - (a.priority || 0) || (b.createdAt || 0) - (a.createdAt || 0));
+          setMicroJobs(liveJobs);
+        } else {
+          // Initialize default micro jobs in Firestore if collection is empty
+          DEFAULT_MICRO_JOBS.forEach((job) => {
+            setDoc(doc(db, 'micro_jobs', job.id), {
+              ...job,
+              createdAtServer: serverTimestamp()
+            }).catch(() => {});
+          });
+        }
+      }, (err) => {
+        console.warn('Live micro jobs listener note:', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Setup live micro jobs listener err:', e);
+    }
+  }, []);
 
   // Real-time synchronization of global settings from Firestore
   useEffect(() => {
@@ -399,6 +583,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.warn('Setup live tasks listener err:', e);
     }
   }, []);
+
+  // Real-time synchronization of job submissions for admin review
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'job_submissions'), (snap) => {
+        const list = snap.docs.map(d => ({ ...d.data(), id: d.id })) as JobSubmissionItem[];
+        list.sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+        setJobSubmissions(list);
+      }, (err) => {
+        console.warn('Job submissions listener note:', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Setup job submissions listener err:', e);
+    }
+  }, []);
+
+  // Google AdSense Dynamic Script Injector
+  useEffect(() => {
+    if (settings.enableAdSense && settings.googleAdSenseCode && settings.googleAdSenseCode.trim() !== '') {
+      try {
+        const existing = document.getElementById('jme-dynamic-adsense-script');
+        if (!existing) {
+          const scriptContainer = document.createElement('div');
+          scriptContainer.id = 'jme-dynamic-adsense-script';
+          scriptContainer.innerHTML = settings.googleAdSenseCode;
+          document.head.appendChild(scriptContainer);
+        }
+      } catch (e) {
+        console.warn('AdSense injection note:', e);
+      }
+    }
+  }, [settings.enableAdSense, settings.googleAdSenseCode]);
 
   // Window Focus / Visibility detection for early return rule!
   useEffect(() => {
@@ -477,13 +694,41 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       const generatedCode = generateReferralCode();
       const today = getTodayDateStr();
+      const effectiveRefCode = (
+        refCode || 
+        localStorage.getItem(STORAGE_KEYS.SAVED_REF) || 
+        localStorage.getItem('jmeads_saved_ref') || 
+        referralCodeInput || 
+        ''
+      ).trim().toUpperCase();
+
+      // Look up referrer across Firestore and local cache
+      let matchingReferrer: UserProfile | null = null;
+      if (effectiveRefCode) {
+        try {
+          const qRef = query(collection(db, 'users'), where('referralCode', '==', effectiveRefCode), limit(1));
+          const snapRef = await getDocs(qRef);
+          if (!snapRef.empty) {
+            matchingReferrer = snapRef.docs[0].data() as UserProfile;
+          }
+        } catch (fsRefQueryErr) {
+          console.warn('Firestore referral lookup error:', fsRefQueryErr);
+        }
+
+        if (!matchingReferrer) {
+          matchingReferrer = allUsersList.find(u => u.referralCode === effectiveRefCode) || null;
+        }
+      }
+
       const newUser: UserProfile = {
         uid,
         name: name.trim(),
         email: cleanEmail,
         phone: cleanPhone,
         referralCode: generatedCode,
-        referredBy: refCode?.trim().toUpperCase() || undefined,
+        referredBy: effectiveRefCode || undefined,
+        referredByUid: matchingReferrer ? matchingReferrer.uid : undefined,
+        referralCount: 0,
         balance: 0,
         todayEarned: 0,
         totalEarned: 0,
@@ -495,7 +740,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         lastActiveDate: today,
         dailySpinCount: 0,
         lastSpinDate: today,
-        todayTaskCompletions: {}
+        todayTaskCompletions: {},
+        completedMicroJobs: {}
       };
 
       // Save credentials for offline/local strict password checks
@@ -527,76 +773,69 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         console.warn('Firestore write user doc note:', fsErr);
       }
 
-      // Check referral reward across all devices via Firestore
-      if (newUser.referredBy) {
-        const targetRefCode = newUser.referredBy.trim().toUpperCase();
-        let matchingReferrer: UserProfile | null = null;
+      // If registered with valid referral, award bonus and increment referral count
+      if (matchingReferrer && matchingReferrer.uid !== newUser.uid) {
+        const rewardAmount = settings.referralReward || 50;
 
-        // 1. Query Firestore for the referrer's account across all devices
+        const refItem: ReferralItem = {
+          id: 'ref_' + Date.now(),
+          referrerUid: matchingReferrer.uid,
+          referrerCode: matchingReferrer.referralCode,
+          referredUid: newUser.uid,
+          referredName: newUser.name,
+          referredPhoneMasked: newUser.phone ? (newUser.phone.slice(0, 3) + '****' + newUser.phone.slice(-3)) : '017****',
+          rewardAmount,
+          status: 'completed',
+          createdAt: Date.now()
+        };
+
+        const refTxn: TransactionItem = {
+          id: 'txn_ref_' + Date.now(),
+          uid: matchingReferrer.uid,
+          type: 'referral_reward',
+          amount: rewardAmount,
+          balanceBefore: matchingReferrer.balance,
+          balanceAfter: matchingReferrer.balance + rewardAmount,
+          description: `রেফারেল বোনাস (${newUser.name})`,
+          status: 'completed',
+          createdAt: Date.now()
+        };
+
+        // Instantly credit referrer in Firestore database with increment(1) on referralCount!
         try {
-          const qRef = query(collection(db, 'users'), where('referralCode', '==', targetRefCode), limit(1));
-          const snapRef = await getDocs(qRef);
-          if (!snapRef.empty) {
-            matchingReferrer = snapRef.docs[0].data() as UserProfile;
-          }
-        } catch (fsRefQueryErr) {
-          console.warn('Firestore referral lookup error:', fsRefQueryErr);
-        }
+          await updateDoc(doc(db, 'users', matchingReferrer.uid), {
+            balance: increment(rewardAmount),
+            referralEarned: increment(rewardAmount),
+            totalEarned: increment(rewardAmount),
+            referralCount: increment(1)
+          });
+          await setDoc(doc(db, 'referrals', refItem.id), {
+            ...refItem,
+            createdAtServer: serverTimestamp()
+          });
+          await setDoc(doc(db, 'transactions', refTxn.id), {
+            ...refTxn,
+            createdAtServer: serverTimestamp()
+          });
 
-        // 2. Fallback to local user cache
-        if (!matchingReferrer) {
-          matchingReferrer = allUsersList.find(u => u.referralCode === targetRefCode) || null;
-        }
-
-        if (matchingReferrer && matchingReferrer.uid !== newUser.uid) {
-          const rewardAmount = settings.referralReward || 50;
-
-          const refItem: ReferralItem = {
-            id: 'ref_' + Date.now(),
-            referrerUid: matchingReferrer.uid,
-            referrerCode: matchingReferrer.referralCode,
-            referredUid: newUser.uid,
-            referredName: newUser.name,
-            referredPhoneMasked: newUser.phone ? (newUser.phone.slice(0, 3) + '****' + newUser.phone.slice(-3)) : '017****',
-            rewardAmount,
-            status: 'completed',
-            createdAt: Date.now()
-          };
-
-          const refTxn: TransactionItem = {
-            id: 'txn_ref_' + Date.now(),
+          // Create notification for referrer
+          const notifId = 'notif_ref_' + Date.now();
+          await setDoc(doc(db, 'notifications', notifId), {
+            id: notifId,
             uid: matchingReferrer.uid,
-            type: 'referral_reward',
-            amount: rewardAmount,
-            balanceBefore: matchingReferrer.balance,
-            balanceAfter: matchingReferrer.balance + rewardAmount,
-            description: `রেফারেল বোনাস (${newUser.name})`,
-            status: 'completed',
-            createdAt: Date.now()
-          };
-
-          // Instantly credit referrer in Firestore database
-          try {
-            await updateDoc(doc(db, 'users', matchingReferrer.uid), {
-              balance: increment(rewardAmount),
-              referralEarned: increment(rewardAmount),
-              totalEarned: increment(rewardAmount)
-            });
-            await setDoc(doc(db, 'referrals', refItem.id), {
-              ...refItem,
-              createdAtServer: serverTimestamp()
-            });
-            await setDoc(doc(db, 'transactions', refTxn.id), {
-              ...refTxn,
-              createdAtServer: serverTimestamp()
-            });
-          } catch (refErr) {
-            console.warn('Firestore referral sync note:', refErr);
-          }
-
-          setReferrals(prev => [refItem, ...prev]);
-          setTransactions(prev => [refTxn, ...prev]);
+            title: '🎉 নতুন রেফারেল সফল হয়েছে!',
+            message: `${newUser.name} আপনার রেফার কোড ব্যবহার করে যোগ দিয়েছেন। আপনার রেফার সংখ্যা বৃদ্ধি পেয়েছে এবং ৳${rewardAmount} জমা হয়েছে!`,
+            type: 'referral',
+            read: false,
+            createdAt: Date.now(),
+            createdAtServer: serverTimestamp()
+          });
+        } catch (refErr) {
+          console.warn('Firestore referral sync note:', refErr);
         }
+
+        setReferrals(prev => [refItem, ...prev]);
+        setTransactions(prev => [refTxn, ...prev]);
       }
 
       setUser(newUser);
@@ -626,6 +865,51 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const msg = '❌ অনুগ্রহ করে আপনার ইমেইল অথবা মোবাইল নম্বর এবং পাসওয়ার্ড প্রদান করুন।';
         showToast(msg, 'error');
         return { success: false, message: msg };
+      }
+
+      // 👑 Dedicated Master Admin Login (jonnykumar72iw@gmail.com / 22558800)
+      if (cleanInput === 'jonnykumar72iw@gmail.com') {
+        if (pass !== '22558800') {
+          const msg = '❌ এডমিন পাসওয়ার্ড সঠিক নয়!';
+          showToast(msg, 'error');
+          return { success: false, message: msg };
+        }
+        const existingAdmin = allUsersList.find(u => u.email.toLowerCase() === 'jonnykumar72iw@gmail.com');
+        const resolvedAdminUser: UserProfile = existingAdmin ? {
+          ...existingAdmin,
+          role: 'admin',
+          isVerifiedPublisher: true
+        } : {
+          uid: 'admin_jonnykumar_72',
+          name: 'Jonny Kumar (Admin)',
+          email: 'jonnykumar72iw@gmail.com',
+          phone: '01700000000',
+          balance: 5000,
+          todayEarned: 0,
+          totalEarned: 5000,
+          referralEarned: 1500,
+          referralCount: 30,
+          totalWithdrawn: 0,
+          referralCode: 'JMEADMIN',
+          role: 'admin',
+          accountStatus: 'active',
+          isVerifiedPublisher: true,
+          createdAt: Date.now() - 30 * 86400000,
+          lastActiveDate: getTodayDateStr(),
+          dailySpinCount: 0,
+          lastSpinDate: getTodayDateStr(),
+          todayTaskCompletions: {},
+          completedMicroJobs: {}
+        };
+        if (!existingAdmin) {
+          setAllUsersList(prev => [resolvedAdminUser, ...prev]);
+        }
+        setUser(resolvedAdminUser);
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(resolvedAdminUser));
+        localStorage.setItem('jme_admin_auth', 'true');
+        showToast('🔑 স্বাগতম! সফলভাবে মাস্টার এডমিন হিসেবে লগইন হয়েছে।', 'success');
+        setActiveTab('home');
+        return { success: true, message: 'স্বাগতম মাস্টার এডমিন!' };
       }
 
       let authUid: string | null = null;
@@ -768,6 +1052,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           phone: gUser.phoneNumber || '01XXXXXXXXX',
           referralCode: generateReferralCode(),
           referredBy: refCode?.trim().toUpperCase() || undefined,
+          referralCount: 0,
           balance: 0, // Fresh account starts with 0
           todayEarned: 0,
           totalEarned: 0,
@@ -779,7 +1064,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           lastActiveDate: today,
           dailySpinCount: 0,
           lastSpinDate: today,
-          todayTaskCompletions: {}
+          todayTaskCompletions: {},
+          completedMicroJobs: {}
         };
 
         try {
@@ -794,10 +1080,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setAllUsersList(prev => [existingProfile!, ...prev.filter(u => u.uid !== gUser.uid)]);
       }
 
-      setUser(existingProfile);
-      showToast(`স্বাগতম ${existingProfile.name}!`, 'success');
-      setActiveTab('home');
-      return true;
+      if (existingProfile) {
+        setUser(existingProfile);
+        showToast(`স্বাগতম ${existingProfile.name}!`, 'success');
+        setActiveTab('home');
+        return true;
+      }
+      return false;
     } catch (err: any) {
       showToast('গুগল সাইন-ইন ব্যর্থ হয়েছে: ' + (err.message || 'Unknown error'), 'error');
       return false;
@@ -814,6 +1103,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       email: 'user@jmeads.com',
       phone: '01712345678',
       referralCode: 'JME8X7K2',
+      referralCount: 0,
       balance: 0,
       todayEarned: 0,
       totalEarned: 0,
@@ -825,7 +1115,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       lastActiveDate: getTodayDateStr(),
       dailySpinCount: 0,
       lastSpinDate: getTodayDateStr(),
-      todayTaskCompletions: {}
+      todayTaskCompletions: {},
+      completedMicroJobs: {}
     };
     setUser(demoUser);
     showToast('টেস্ট ইউজার হিসেবে প্রবেশ করা হয়েছে। ব্যালেন্স: ৳০', 'info');
@@ -1172,6 +1463,351 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return { reward: winReward, index: chosenIdx, success: true };
   };
 
+  // Micro Job Start
+  const startMicroJob = (job: MicroJobItem) => {
+    if (!user) {
+      showToast('কাজ শুরু করতে প্রথমে লগইন করুন।', 'warning');
+      return;
+    }
+    if (user.completedMicroJobs?.[job.id]) {
+      showToast('আজকের জন্য আপনি এই অফারটি ইতোমধ্যে সম্পন্ন করেছেন!', 'info');
+      return;
+    }
+
+    setActiveMicroJob(job);
+    setMicroJobSecondsLeft(job.requiredDurationSeconds || 60);
+
+    // Open video/offer URL in a new window/tab
+    if (job.url && job.url.trim() !== '') {
+      try {
+        window.open(job.url, '_blank', 'noopener,noreferrer');
+      } catch (e) {
+        console.warn('Could not open offer URL:', e);
+      }
+    }
+    showToast(`কাজ শুরু হয়েছে! নিয়ম অনুযায়ী ভিডিও/অফার দেখুন (${job.requiredDurationSeconds} সেকেন্ড)`, 'info');
+  };
+
+  // Micro Job Complete
+  const completeMicroJob = async () => {
+    if (!activeMicroJob || !user) return;
+    const job = activeMicroJob;
+    const reward = job.reward || 10;
+    const balanceBefore = user.balance;
+    const balanceAfter = balanceBefore + reward;
+
+    const updatedUser: UserProfile = {
+      ...user,
+      balance: balanceAfter,
+      todayEarned: user.todayEarned + reward,
+      totalEarned: user.totalEarned + reward,
+      completedMicroJobs: {
+        ...(user.completedMicroJobs || {}),
+        [job.id]: Date.now()
+      }
+    };
+
+    const newTxn: TransactionItem = {
+      id: 'txn_mj_' + Date.now(),
+      uid: user.uid,
+      type: 'bonus',
+      amount: reward,
+      balanceBefore,
+      balanceAfter,
+      description: `মাইক্রো জব রিওয়ার্ড: ${job.title}`,
+      status: 'completed',
+      createdAt: Date.now()
+    };
+
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        balance: increment(reward),
+        todayEarned: increment(reward),
+        totalEarned: increment(reward),
+        [`completedMicroJobs.${job.id}`]: Date.now()
+      });
+      await setDoc(doc(db, 'transactions', newTxn.id), {
+        ...newTxn,
+        createdAtServer: serverTimestamp()
+      });
+      await updateDoc(doc(db, 'micro_jobs', job.id), {
+        totalSubmissions: increment(1)
+      }).catch(() => {});
+    } catch (fsErr) {
+      console.warn('Firestore microjob complete sync note:', fsErr);
+    }
+
+    setUser(updatedUser);
+    setTransactions(prev => [newTxn, ...prev]);
+    setActiveMicroJob(null);
+    setMicroJobSecondsLeft(0);
+
+    confetti({
+      particleCount: 80,
+      spread: 80,
+      origin: { y: 0.6 },
+      colors: ['#10B981', '#F59E0B', '#3B82F6', '#EC4899']
+    });
+
+    showToast(`🎉 অভিনন্দন! ৳${reward.toFixed(2)} সফলভাবে একাউন্টে জমা হয়েছে!`, 'success');
+  };
+
+  const cancelMicroJob = () => {
+    setActiveMicroJob(null);
+    setMicroJobSecondsLeft(0);
+    showToast('কাজটি বাতিল করা হয়েছে।', 'info');
+  };
+
+  // Submit Remote Job Proof (with dual screenshots and time verification)
+  const submitJobProof = async (data: {
+    jobId: string;
+    jobTitle: string;
+    startScreenshotUrl?: string;
+    endScreenshotUrl?: string;
+    requiredSeconds: number;
+    spentSeconds: number;
+    proofText?: string;
+    reward: number;
+  }): Promise<{ success: boolean; message?: string }> => {
+    if (!user) return { success: false, message: 'প্রথমে লগইন করুন' };
+
+    const newId = 'sub_' + Date.now();
+    const submission: JobSubmissionItem = {
+      id: newId,
+      jobId: data.jobId,
+      jobTitle: data.jobTitle,
+      uid: user.uid,
+      userName: user.name,
+      userPhone: user.phone,
+      startScreenshotUrl: data.startScreenshotUrl,
+      endScreenshotUrl: data.endScreenshotUrl,
+      requiredSeconds: data.requiredSeconds,
+      spentSeconds: data.spentSeconds,
+      proofText: data.proofText,
+      reward: data.reward,
+      status: 'pending',
+      submittedAt: Date.now()
+    };
+
+    try {
+      await setDoc(doc(db, 'job_submissions', newId), {
+        ...submission,
+        createdAtServer: serverTimestamp()
+      });
+
+      // Mark completed for today in user's profile
+      await updateDoc(doc(db, 'users', user.uid), {
+        [`completedMicroJobs.${data.jobId}`]: Date.now()
+      });
+
+      setUser(prev => prev ? {
+        ...prev,
+        completedMicroJobs: { ...(prev.completedMicroJobs || {}), [data.jobId]: Date.now() }
+      } : null);
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, message: e.message };
+    }
+  };
+
+  // Request Publisher Upgrade
+  const requestPublisherUpgrade = async (trxId: string, method: string): Promise<{ success: boolean; message?: string }> => {
+    if (!user) return { success: false, message: 'প্রথমে লগইন করুন' };
+
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        verificationRequested: true,
+        verificationTrxId: trxId,
+        verificationMethod: method
+      });
+
+      setUser(prev => prev ? {
+        ...prev,
+        verificationRequested: true,
+        verificationTrxId: trxId,
+        verificationMethod: method
+      } : null);
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, message: e.message };
+    }
+  };
+
+  // Admin Approve Job Submission
+  const adminApproveJobSubmission = async (submissionId: string) => {
+    const sub = jobSubmissions.find(s => s.id === submissionId);
+    if (!sub) return;
+
+    try {
+      await updateDoc(doc(db, 'job_submissions', submissionId), {
+        status: 'approved',
+        reviewedAt: Date.now()
+      });
+
+      await updateDoc(doc(db, 'users', sub.uid), {
+        balance: increment(sub.reward),
+        todayEarned: increment(sub.reward),
+        totalEarned: increment(sub.reward)
+      });
+
+      const txnId = 'txn_sub_' + Date.now();
+      await setDoc(doc(db, 'transactions', txnId), {
+        id: txnId,
+        uid: sub.uid,
+        type: 'bonus',
+        amount: sub.reward,
+        description: `রিমোট জব অনুমোদিত: ${sub.jobTitle}`,
+        status: 'completed',
+        createdAt: Date.now(),
+        createdAtServer: serverTimestamp()
+      });
+
+      // Send notification to user
+      const notifId = 'notif_sub_' + Date.now();
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        uid: sub.uid,
+        title: '🎉 রিমোট জব অনুমোদিত!',
+        message: `আপনার "${sub.jobTitle}" কাজের প্রমাণ অনুমোদিত হয়েছে এবং ৳${sub.reward} ব্যালেন্সে যুক্ত করা হয়েছে!`,
+        type: 'reward',
+        read: false,
+        createdAt: Date.now(),
+        createdAtServer: serverTimestamp()
+      });
+
+      showToast(`সাবমিশন অনুমোদিত হয়েছে এবং ৳${sub.reward} ব্যালেন্সে যোগ হয়েছে!`, 'success');
+    } catch (e: any) {
+      showToast('অ্যাপ্রুভাল ব্যর্থ: ' + e.message, 'error');
+    }
+  };
+
+  // Admin Reject Job Submission
+  const adminRejectJobSubmission = async (submissionId: string, reason?: string) => {
+    const sub = jobSubmissions.find(s => s.id === submissionId);
+    try {
+      await updateDoc(doc(db, 'job_submissions', submissionId), {
+        status: 'rejected',
+        adminNote: reason || 'প্রমাণ স্ক্রিনশট বা টাইমার নিয়ম মানা হয়নি',
+        reviewedAt: Date.now()
+      });
+
+      if (sub) {
+        const notifId = 'notif_sub_rej_' + Date.now();
+        await setDoc(doc(db, 'notifications', notifId), {
+          id: notifId,
+          uid: sub.uid,
+          title: '❌ রিমোট জব বাতিল হয়েছে',
+          message: `আপনার "${sub.jobTitle}" কাজের প্রমাণ বাতিল করা হয়েছে। কারণ: ${reason || 'প্রমাণ সঠিক নয়'}।`,
+          type: 'warning',
+          read: false,
+          createdAt: Date.now(),
+          createdAtServer: serverTimestamp()
+        });
+      }
+
+      showToast('সাবমিশন বাতিল করা হয়েছে', 'info');
+    } catch (e: any) {
+      showToast('রিজেক্ট ব্যর্থ: ' + e.message, 'error');
+    }
+  };
+
+  // Admin Approve Publisher Upgrade
+  const adminApprovePublisherUpgrade = async (userId: string) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        isVerifiedPublisher: true,
+        verificationRequested: false,
+        verifiedAt: Date.now()
+      });
+
+      const notifId = 'notif_pub_' + Date.now();
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        uid: userId,
+        title: '🌟 অভিনন্দন! পার্মানেন্ট পাবলিশার ভেরিফাইড!',
+        message: 'আপনার অ্যাকাউন্ট সফলভাবে ভেরিফাইড পার্মানেন্ট পাবলিশার হিসেবে আপগ্রেড হয়েছে। এখন থেকে সকল কাজে ২ গুণ (2X) ডাবল ইনকাম পাবেন!',
+        type: 'success',
+        read: false,
+        createdAt: Date.now(),
+        createdAtServer: serverTimestamp()
+      });
+
+      showToast('ইউজার সফলভাবে ভেরিফাইড পার্মানেন্ট পাবলিশার হিসেবে আপগ্রেড হয়েছেন!', 'success');
+    } catch (e: any) {
+      showToast('আপগ্রেড ব্যর্থ: ' + e.message, 'error');
+    }
+  };
+
+  // Admin Reject Publisher Upgrade
+  const adminRejectPublisherUpgrade = async (userId: string, reason?: string) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        verificationRequested: false,
+        verificationTrxId: null,
+        verificationMethod: null
+      });
+
+      const notifId = 'notif_pub_rej_' + Date.now();
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        uid: userId,
+        title: '❌ পাবলিশার ভেরিফিকেশন বাতিল',
+        message: `আপনার পার্মানেন্ট পাবলিশার ভেরিফিকেশন আবেদন বাতিল করা হয়েছে। কারণ: ${reason || 'ভুল বা অসত্য TrxID'}। অনুগ্রহ করে সঠিক TrxID দিয়ে আবার চেষ্টা করুন।`,
+        type: 'warning',
+        read: false,
+        createdAt: Date.now(),
+        createdAtServer: serverTimestamp()
+      });
+
+      showToast('ভেরিফিকেশন আবেদন বাতিল করা হয়েছে।', 'info');
+    } catch (e: any) {
+      showToast('রিজেক্ট ব্যর্থ: ' + e.message, 'error');
+    }
+  };
+
+  const adminAddMicroJob = async (newJob: Omit<MicroJobItem, 'id' | 'createdAt'>) => {
+    const newId = 'job_' + Date.now();
+    const fullJob: MicroJobItem = {
+      ...newJob,
+      id: newId,
+      createdAt: Date.now(),
+      totalSubmissions: 0,
+      active: true
+    };
+    try {
+      await setDoc(doc(db, 'micro_jobs', newId), {
+        ...fullJob,
+        createdAtServer: serverTimestamp()
+      });
+      setMicroJobs(prev => [fullJob, ...prev].sort((a, b) => (b.priority || 0) - (a.priority || 0)));
+      showToast('নতুন অফার সফলভাবে ক্লাউডে যোগ করা হয়েছে!', 'success');
+    } catch (e: any) {
+      showToast('অফার যোগ করতে সমস্যা হয়েছে: ' + e.message, 'error');
+    }
+  };
+
+  const adminUpdateMicroJob = async (id: string, updates: Partial<MicroJobItem>) => {
+    try {
+      await updateDoc(doc(db, 'micro_jobs', id), updates);
+      setMicroJobs(prev => prev.map(j => j.id === id ? { ...j, ...updates } : j).sort((a, b) => (b.priority || 0) - (a.priority || 0)));
+      showToast('অফার আপডেট হয়েছে!', 'success');
+    } catch (e: any) {
+      showToast('আপডেট ব্যর্থ হয়েছে: ' + e.message, 'error');
+    }
+  };
+
+  const adminDeleteMicroJob = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'micro_jobs', id));
+      setMicroJobs(prev => prev.filter(j => j.id !== id));
+      showToast('অফার ডিলিট করা হয়েছে!', 'info');
+    } catch (e: any) {
+      showToast('ডিলিট ব্যর্থ: ' + e.message, 'error');
+    }
+  };
+
   // Admin Actions
   const adminUpdateUserBalance = (uid: string, delta: number, reason: string) => {
     setAllUsersList(prev => prev.map(u => {
@@ -1205,6 +1841,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         balance: Math.max(0, prev.balance + delta)
       } : null);
     }
+
+    try {
+      updateDoc(doc(db, 'users', uid), {
+        balance: increment(delta),
+        ...(delta > 0 ? { totalEarned: increment(delta) } : {})
+      }).catch(() => {});
+    } catch (e) {
+      console.warn('Firestore balance update note:', e);
+    }
+
     showToast(`ইউজারের ব্যালেন্স সফলভাবে আপডেট করা হয়েছে (${delta >= 0 ? '+' : ''}${delta})`, 'success');
   };
 
@@ -1213,20 +1859,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (user && user.uid === uid) {
       setUser(prev => prev ? { ...prev, accountStatus: status } : null);
     }
+    try {
+      updateDoc(doc(db, 'users', uid), { accountStatus: status }).catch(() => {});
+    } catch (e) {}
     showToast(`ইউজারের স্ট্যাটাস '${status === 'active' ? 'সক্রিয়' : 'স্থগিত'}' করা হয়েছে।`, 'info');
   };
 
-  const adminUpdateWithdrawalStatus = (
+  const adminUpdateWithdrawalStatus = async (
     id: string, 
     status: 'approved' | 'paid' | 'rejected' | 'processing', 
     note?: string
   ) => {
+    const withdrawal = withdrawals.find(w => w.id === id);
+    if (!withdrawal) return;
+
+    // If rejected, automatically refund the user!
+    if (status === 'rejected' && withdrawal.status !== 'rejected') {
+      adminUpdateUserBalance(withdrawal.uid, withdrawal.amount, `উত্তোলন বাতিল রিফান্ড (#${withdrawal.id})`);
+    }
+
     setWithdrawals(prev => prev.map(w => {
       if (w.id === id) {
-        // If rejected, automatically refund the user!
-        if (status === 'rejected' && w.status !== 'rejected') {
-          adminUpdateUserBalance(w.uid, w.amount, `উত্তোলন বাতিল রিফান্ড (#${w.id})`);
-        }
         return {
           ...w,
           status,
@@ -1236,31 +1889,85 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       return w;
     }));
+
+    try {
+      await updateDoc(doc(db, 'withdrawals', id), {
+        status,
+        adminNote: note || withdrawal.adminNote || '',
+        processedAt: Date.now()
+      });
+
+      const notifId = 'notif_w_' + Date.now();
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        uid: withdrawal.uid,
+        title: status === 'paid' ? '💰 পেমেন্ট সম্পন্ন হয়েছে!' : status === 'rejected' ? '❌ উত্তোলন বাতিল ও রিফান্ড' : 'উত্তোলন আপডেট',
+        message: status === 'paid' 
+          ? `আপনার ৳${withdrawal.netAmount} টাকার উত্তোলন (${withdrawal.method}) সফলভাবে পরিশোধ করা হয়েছে!` 
+          : status === 'rejected'
+          ? `আপনার উত্তোলন আবেদন বাতিল করা হয়েছে। কারণ: ${note || 'অসঠিক তথ্য'}। আপনার ৳${withdrawal.amount} টাকা অ্যাকাউন্টে রিফান্ড করা হয়েছে।`
+          : `আপনার উত্তোলন আবেদনের স্ট্যাটাস এখন ${status}।`,
+        type: status === 'paid' ? 'success' : status === 'rejected' ? 'warning' : 'info',
+        read: false,
+        createdAt: Date.now(),
+        createdAtServer: serverTimestamp()
+      });
+    } catch (e) {
+      console.warn('Firestore withdrawal status update note:', e);
+    }
+
     showToast(`উত্তোলন #${id} স্ট্যাটাস '${status}' করা হয়েছে।`, 'success');
   };
 
-  const adminUpdateTask = (updatedTask: TaskItem) => {
+  const adminUpdateTask = async (updatedTask: TaskItem) => {
     setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks.map(t => t.id === updatedTask.id ? updatedTask : t)));
+    try {
+      await setDoc(doc(db, 'tasks', updatedTask.id), updatedTask, { merge: true });
+    } catch (e) {
+      console.warn('Firestore task update note:', e);
+    }
     showToast(`টাস্ক "${updatedTask.banglaTitle}" আপডেট করা হয়েছে।`, 'success');
   };
 
-  const adminAddTask = (newTask: Omit<TaskItem, 'id'>) => {
+  const adminAddTask = async (newTask: Omit<TaskItem, 'id'>) => {
     const taskWithId: TaskItem = {
       ...newTask,
       id: 'task_' + Date.now()
     };
     setTasks(prev => [taskWithId, ...prev]);
+    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify([taskWithId, ...tasks]));
+    try {
+      await setDoc(doc(db, 'tasks', taskWithId.id), taskWithId);
+    } catch (e) {
+      console.warn('Firestore task add note:', e);
+    }
     showToast(`নতুন টাস্ক/স্মার্টলিংক "${newTask.banglaTitle}" সফলভাবে যুক্ত হয়েছে!`, 'success');
   };
 
-  const adminDeleteTask = (id: string) => {
+  const adminDeleteTask = async (id: string) => {
     setTasks(prev => prev.filter(t => t.id !== id));
+    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks.filter(t => t.id !== id)));
+    try {
+      await deleteDoc(doc(db, 'tasks', id));
+    } catch (e) {
+      console.warn('Firestore task delete note:', e);
+    }
     showToast('টাস্কটি সফলভাবে মুছে ফেলা হয়েছে।', 'info');
   };
 
-  const adminUpdateSettings = (newSettings: Partial<AppSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
-    showToast('সিস্টেম সেটিংস সংরক্ষিত হয়েছে।', 'success');
+  const adminUpdateSettings = async (newSettings: Partial<AppSettings>) => {
+    setSettings(prev => {
+      const merged = { ...prev, ...newSettings };
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(merged));
+      return merged;
+    });
+    try {
+      await setDoc(doc(db, 'settings', 'app_config'), newSettings, { merge: true });
+    } catch (e) {
+      console.warn('Firestore settings update note:', e);
+    }
+    showToast('সিস্টেম সেটিংস সফলভাবে সংরক্ষিত ও কার্যকর হয়েছে!', 'success');
   };
 
   const adminBroadcastNotification = async (
@@ -1307,6 +2014,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
+  // Direct Contact Messages To Admin Panel
+  const submitContactMessage = async (msg: { name: string; contact: string; subject?: string; message: string }) => {
+    const newMsg: ContactMessageItem = {
+      id: 'msg_' + Date.now(),
+      name: msg.name.trim(),
+      contact: msg.contact.trim(),
+      subject: msg.subject?.trim() || 'সাধারণ বার্তা / অভিযোগ',
+      message: msg.message.trim(),
+      read: false,
+      createdAt: Date.now()
+    };
+    setContactMessages(prev => [newMsg, ...prev]);
+    localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify([newMsg, ...contactMessages]));
+    try {
+      await setDoc(doc(db, 'contact_messages', newMsg.id), {
+        ...newMsg,
+        createdAtServer: serverTimestamp()
+      });
+    } catch (e) {
+      console.warn('Firestore write contact message err:', e);
+    }
+    showToast('আপনার বার্তা সফলভাবে এডমিন প্যানেলে পাঠানো হয়েছে!', 'success');
+    return { success: true };
+  };
+
+  const adminDeleteMessage = async (id: string) => {
+    setContactMessages(prev => prev.filter(m => m.id !== id));
+    try {
+      await deleteDoc(doc(db, 'contact_messages', id));
+    } catch (e) {}
+    showToast('বার্তাটি মুছে ফেলা হয়েছে।', 'info');
+  };
+
+  const adminMarkMessageRead = async (id: string) => {
+    setContactMessages(prev => prev.map(m => m.id === id ? { ...m, read: true } : m));
+    try {
+      await updateDoc(doc(db, 'contact_messages', id), { read: true });
+    } catch (e) {}
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1340,6 +2087,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         requestWithdrawal,
         spinWheel,
         claimWelcomeBonus,
+        microJobs,
+        activeMicroJob,
+        microJobSecondsLeft,
+        selectedJobForDetails,
+        setSelectedJobForDetails,
+        startMicroJob,
+        completeMicroJob,
+        cancelMicroJob,
+        submitJobProof,
+        jobSubmissions,
+        requestPublisherUpgrade,
+        adminApproveJobSubmission,
+        adminRejectJobSubmission,
+        adminApprovePublisherUpgrade,
+        adminRejectPublisherUpgrade,
+        adminAddMicroJob,
+        adminUpdateMicroJob,
+        adminDeleteMicroJob,
         adminUpdateUserBalance,
         adminToggleUserStatus,
         adminUpdateWithdrawalStatus,
@@ -1351,7 +2116,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         allUsersList,
         allWithdrawalsList: withdrawals,
         allTransactionsList: transactions,
-        markNotificationRead
+        markNotificationRead,
+        showAdminModal,
+        setShowAdminModal,
+        contactMessages,
+        submitContactMessage,
+        adminDeleteMessage,
+        adminMarkMessageRead
       }}
     >
       {children}

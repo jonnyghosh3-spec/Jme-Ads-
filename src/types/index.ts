@@ -5,18 +5,64 @@ export interface UserProfile {
   phone: string;
   referralCode: string;
   referredBy?: string;
+  referredByUid?: string;
+  referralCount: number; // Exact count of registered referrals
   balance: number;
   todayEarned: number;
   totalEarned: number;
   referralEarned: number;
   totalWithdrawn: number;
   accountStatus: 'active' | 'under_review' | 'suspended' | 'banned';
-  role: 'user';
+  role: 'user' | 'admin';
   createdAt: number;
   lastActiveDate: string; // YYYY-MM-DD
   dailySpinCount: number;
   lastSpinDate: string;
   todayTaskCompletions: Record<string, number>; // taskId -> count today (max 3)
+  completedMicroJobs?: Record<string, number>; // jobId -> completion timestamp
+  isVerifiedPublisher?: boolean; // Verified badge & 2x profit
+  verifiedAt?: number;
+  verificationRequested?: boolean;
+  verificationTrxId?: string;
+  verificationMethod?: string;
+}
+
+export interface MicroJobItem {
+  id: string;
+  title: string;
+  category: 'youtube' | 'website' | 'subscribe' | 'app' | 'special';
+  categoryLabel?: string; // e.g. "ইউটিউব ভিডিও", "ওয়েবসাইট ভিজিট"
+  description: string; // e.g. "ভিডিওটি সম্পূর্ণ ২ মিনিট দেখুন ও লাইক দিন"
+  url: string; // e.g. https://www.youtube.com/watch?v=...
+  requiredDurationSeconds: number; // e.g. 60 or 120 seconds
+  reward: number; // e.g. 10
+  priority: number; // Higher number appears at top! (এডমিন প্যানেলে অফার উপরে রাখার সিস্টেম)
+  active: boolean;
+  totalSubmissions?: number;
+  dailyLimit?: number; // default 1 per user
+  requiresScreenshots?: boolean; // Robot tracking: requires start & end screenshot
+  instructions?: string[];
+  requirements?: string[];
+  createdAt: number;
+}
+
+export interface JobSubmissionItem {
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  uid: string;
+  userName: string;
+  userPhone: string;
+  startScreenshotUrl?: string;
+  endScreenshotUrl?: string;
+  requiredSeconds: number;
+  spentSeconds: number;
+  proofText?: string;
+  reward: number;
+  status: 'pending' | 'approved' | 'rejected';
+  adminNote?: string;
+  submittedAt: number;
+  reviewedAt?: number;
 }
 
 export interface TaskItem {
@@ -108,4 +154,25 @@ export interface AppSettings {
   nativeAdHtml?: string; // HTML/Script code for Native Ads
   popunderAdUrl?: string; // Popunder or Direct Ad URL
   apkDownloadUrl?: string; // Custom APK download link
+  showPublisherUpgradeBanner?: boolean; // Admin toggle to show/hide upgrade banner
+  publisherUpgradeFee?: number; // e.g. ৳100 or ৳200
+  publisherUpgradeBkash?: string; // e.g. 017...
+  publisherUpgradeNagad?: string; // e.g. 018...
+  googleAdSenseCode?: string; // AdSense Verification HTML/script snippet
+  enableAdSense?: boolean; // Enable AdSense toggle
+  cpmSmartlinkUrl?: string; // Primary high CPM smartlink URL
+  cpmRate?: number; // Primary CPM rate display e.g. 0.3
+  showMicroJobsSection?: boolean; // Toggle micro jobs section
+  showLivePayoutTicker?: boolean; // Toggle live payout ticker
 }
+
+export interface ContactMessageItem {
+  id: string;
+  name: string;
+  contact: string; // phone or email
+  subject?: string;
+  message: string;
+  read: boolean;
+  createdAt: number;
+}
+

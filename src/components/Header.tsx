@@ -10,28 +10,29 @@ import {
   UserCircle,
   ExternalLink,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Shield
 } from 'lucide-react';
 
 export const Header: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSupport }) => {
-  const { user, notifications, settings, activeTab, setActiveTab, showToast } = useApp();
+  const { user, notifications, settings, activeTab, setActiveTab, showToast, setShowAdminModal } = useApp();
   const [showCommunityModal, setShowCommunityModal] = useState<'telegram' | 'youtube' | null>(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleTelegramClick = () => {
-    if (settings.telegramUrl && settings.telegramUrl.trim() !== '') {
-      window.open(settings.telegramUrl, '_blank');
-    } else {
-      setShowCommunityModal('telegram');
-    }
+    const url = settings.telegramUrl && settings.telegramUrl.trim() !== '' 
+      ? settings.telegramUrl.trim() 
+      : 'https://t.me/JMEAds_Official';
+    window.open(url, '_blank');
   };
 
   const handleYoutubeClick = () => {
-    if (settings.youtubeTutorialUrl && settings.youtubeTutorialUrl.trim() !== '') {
-      window.open(settings.youtubeTutorialUrl, '_blank');
+    const url = settings.youtubeVideo1Url || settings.youtubeTutorialUrl;
+    if (url && url.trim() !== '') {
+      window.open(url.trim(), '_blank');
     } else {
-      setShowCommunityModal('youtube');
+      window.open('https://www.youtube.com', '_blank');
     }
   };
 
@@ -61,6 +62,18 @@ export const Header: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSupport 
           <div className="flex items-center gap-1.5">
             {/* Install PWA Button */}
             <PWAInstallButton variant="compact" />
+
+            {/* Admin Panel Button - ONLY visible to master admin account jonnykumar72iw@gmail.com */}
+            {user?.email?.toLowerCase() === 'jonnykumar72iw@gmail.com' && (
+              <button
+                onClick={() => setShowAdminModal(true)}
+                className="p-1.5 px-2.5 rounded-xl text-emerald-950 bg-emerald-100 hover:bg-emerald-200 active:scale-95 transition-all flex items-center gap-1 border border-emerald-400 shadow-xs cursor-pointer animate-pulse"
+                title="মাস্টার অ্যাডমিন প্যানেল"
+              >
+                <Shield className="w-4 h-4 text-emerald-800" />
+                <span className="text-[10px] font-black text-emerald-950">এডমিন</span>
+              </button>
+            )}
 
             {/* Notifications */}
             <button

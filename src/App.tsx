@@ -18,11 +18,29 @@ import { LeaderboardPage } from './pages/LeaderboardPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { VideoAdsPage } from './pages/VideoAdsPage';
+import { MicroJobsPage } from './pages/MicroJobsPage';
+import { RemoteJobDetailsPage } from './pages/RemoteJobDetailsPage';
+import { MicroJobModal } from './components/MicroJobModal';
+import { AdminPanelModal } from './components/AdminPanelModal';
+import { PrivacyPolicyPage, TermsPage, AboutUsPage, ContactUsPage } from './pages/PolicyPages';
+import { AccountVerificationBanner } from './components/AccountVerificationBanner';
 
 import { CheckCircle2, AlertCircle, Info, X, Bell } from 'lucide-react';
 
 const MainApp: React.FC = () => {
-  const { user, activeTab, toast, closeToast, notifications } = useApp();
+  const { 
+    user, 
+    activeTab, 
+    setActiveTab, 
+    toast, 
+    closeToast, 
+    notifications,
+    showAdminModal,
+    setShowAdminModal,
+    selectedJobForDetails,
+    setSelectedJobForDetails,
+    settings
+  } = useApp();
   const [showSupport, setShowSupport] = useState(false);
 
   // Request browser push notification permission a short while after entering the app
@@ -58,17 +76,49 @@ const MainApp: React.FC = () => {
           <Header onOpenSupport={() => setShowSupport(true)} />
 
           {/* Main View Container */}
-          <main className="flex-1 max-w-md w-full mx-auto px-4 pt-3">
-            {activeTab === 'home' && <HomePage onOpenSupport={() => setShowSupport(true)} />}
-            {activeTab === 'tasks' && <TasksPage />}
-            {activeTab === 'team' && <TeamPage />}
-            {activeTab === 'withdraw' && <WithdrawPage />}
-            {activeTab === 'account' && <AccountPage onOpenSupport={() => setShowSupport(true)} />}
-            {activeTab === 'spin' && <SpinPage />}
-            {activeTab === 'leaderboard' && <LeaderboardPage />}
-            {activeTab === 'history' && <HistoryPage />}
-            {activeTab === 'notifications' && <NotificationsPage />}
-            {activeTab === 'video-ads' && <VideoAdsPage />}
+          <main className="flex-1 max-w-md w-full mx-auto px-4 pt-3 space-y-3">
+            {/* Dedicated Remote Job Details Page when a job is clicked */}
+            {selectedJobForDetails ? (
+              <RemoteJobDetailsPage 
+                job={selectedJobForDetails} 
+                onBack={() => setSelectedJobForDetails(null)} 
+              />
+            ) : (
+              <>
+                {/* Account Verification & 2X Profit Alert (Admin Toggleable) */}
+                {(activeTab === 'home' || activeTab === 'tasks') && <AccountVerificationBanner />}
+
+                {activeTab === 'home' && <HomePage onOpenSupport={() => setShowSupport(true)} />}
+                {activeTab === 'tasks' && <TasksPage />}
+                {activeTab === 'team' && <TeamPage />}
+                {activeTab === 'withdraw' && <WithdrawPage />}
+                {activeTab === 'account' && <AccountPage onOpenSupport={() => setShowSupport(true)} />}
+                {activeTab === 'spin' && <SpinPage />}
+                {activeTab === 'leaderboard' && <LeaderboardPage />}
+                {activeTab === 'history' && <HistoryPage />}
+                {activeTab === 'notifications' && <NotificationsPage />}
+                {activeTab === 'video-ads' && <VideoAdsPage />}
+                {activeTab === 'microjobs' && <MicroJobsPage />}
+                {activeTab === 'privacy' && <PrivacyPolicyPage />}
+                {activeTab === 'terms' && <TermsPage />}
+                {activeTab === 'about' && <AboutUsPage />}
+                {activeTab === 'contact' && <ContactUsPage />}
+              </>
+            )}
+
+            {/* Google AdSense Compliant Footer */}
+            <footer className="py-4 text-center border-t border-gray-200/60 text-[10px] text-gray-500 space-y-1.5 pb-24">
+              <div className="flex items-center justify-center gap-2.5 font-bold flex-wrap text-emerald-800">
+                <button onClick={() => { setSelectedJobForDetails(null); setActiveTab('privacy'); }} className="hover:underline cursor-pointer">Privacy Policy</button>
+                <span>•</span>
+                <button onClick={() => { setSelectedJobForDetails(null); setActiveTab('terms'); }} className="hover:underline cursor-pointer">Terms & Conditions</button>
+                <span>•</span>
+                <button onClick={() => { setSelectedJobForDetails(null); setActiveTab('about'); }} className="hover:underline cursor-pointer">About Us</button>
+                <span>•</span>
+                <button onClick={() => { setSelectedJobForDetails(null); setActiveTab('contact'); }} className="hover:underline cursor-pointer">Contact Us</button>
+              </div>
+              <p className="text-[9px] text-gray-400">© 2026 JME Ads Network. All Rights Reserved. Google AdSense Verified.</p>
+            </footer>
           </main>
 
           {/* Fixed Bottom Navigation */}
@@ -77,14 +127,23 @@ const MainApp: React.FC = () => {
           {/* Task 15s Countdown Overlay & Fraud Prevention Alert */}
           <TaskVerificationModal />
 
+          {/* Micro Job Live Countdown Modal */}
+          <MicroJobModal />
+
           {/* Customer Support Modal */}
           <SupportModal 
             isOpen={showSupport} 
             onClose={() => setShowSupport(false)} 
           />
 
+          {/* Master Admin Panel Modal */}
+          <AdminPanelModal 
+            isOpen={showAdminModal} 
+            onClose={() => setShowAdminModal(false)} 
+          />
+
           {/* Live Payout Ticker (5 automatic withdrawal messages per minute with progress animation) */}
-          <LivePayoutTicker />
+          {settings.showLivePayoutTicker !== false && <LivePayoutTicker />}
         </div>
       )}
 

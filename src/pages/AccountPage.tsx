@@ -19,11 +19,12 @@ import {
   X,
   Phone,
   Mail,
-  Calendar
+  Calendar,
+  Shield
 } from 'lucide-react';
 
 export const AccountPage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSupport }) => {
-  const { user, logout, setActiveTab, showToast } = useApp();
+  const { user, logout, setActiveTab, showToast, setShowAdminModal } = useApp();
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(user?.name || '');
   const [editPhone, setEditPhone] = useState(user?.phone || '');
@@ -135,6 +136,32 @@ export const AccountPage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSup
           </div>
         </div>
       </div>
+
+      {/* Master Admin Panel Entry Banner - ONLY visible to jonnykumar72iw@gmail.com */}
+      {user?.email?.toLowerCase() === 'jonnykumar72iw@gmail.com' && (
+        <div 
+          onClick={() => setShowAdminModal(true)}
+          className="p-3.5 rounded-3xl bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white shadow-md border border-emerald-500/40 flex items-center justify-between cursor-pointer hover:border-emerald-400 transition-all active:scale-98"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h4 className="font-extrabold text-xs sm:text-sm text-white">মাস্টার অ্যাডমিন কন্ট্রোল</h4>
+                <span className="text-[9px] font-black bg-emerald-500 text-slate-950 px-1.5 py-0.2 rounded-full">ROOT</span>
+              </div>
+              <p className="text-[10px] text-emerald-300">বিজ্ঞাপন, ভিডিও, অফার ও পেমেন্ট ম্যানেজ করুন</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 text-xs font-bold text-emerald-400 bg-white/10 px-3 py-1.5 rounded-xl border border-white/10">
+            <span>প্রবেশ</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      )}
 
       {/* 3. Account Services (8 Quick Cards matching reference) */}
       <div className="rounded-3xl bg-white border border-emerald-100 p-4 shadow-xs">

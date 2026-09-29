@@ -19,10 +19,34 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   youtubeVideo2Title: 'টিউটোরিয়াল ভিডিও ২: কীভাবে টাকা তুলবেন?',
   telegramUrl: 'https://t.me/JMEAds_Official',
   supportWhatsapp: '',
-  announcement: 'স্বাগতম JME Ads-এ! প্রতিটি বিজ্ঞাপনে পাচ্ছেন ৳৫ এবং প্রতি রেফারে ৳৫০ নিশ্চিত বোনাস। ১৫ সেকেন্ডের আগে ফিরে এলে কাজ বাতিল হবে।'
+  announcement: 'স্বাগতম JME Ads-এ! প্রতিটি বিজ্ঞাপনে পাচ্ছেন ৳৫ এবং প্রতি রেফারে ৳৫০ নিশ্চিত বোনাস। ১৫ সেকেন্ডের আগে ফিরে এলে কাজ বাতিল হবে।',
+  showPublisherUpgradeBanner: true,
+  publisherUpgradeFee: 30,
+  publisherUpgradeBkash: '01700000000',
+  publisherUpgradeNagad: '01800000000',
+  googleAdSenseCode: '',
+  enableAdSense: false,
+  cpmSmartlinkUrl: 'https://www.profitableratecpmnetwork.com/dtexun9wfc?key=96fef72f5b581d12399d905cebe39a75',
+  cpmRate: 0.3,
+  showMicroJobsSection: true,
+  showLivePayoutTicker: true
 };
 
 export const DEFAULT_TASKS: TaskItem[] = [
+  {
+    id: 'task-top-cpm',
+    nameId: 'High_CPM_Smartlink',
+    networkId: '96fef72f',
+    title: 'Top High CPM Link',
+    banglaTitle: '🔥 হাই-সিপিএম বিশেষ বিজ্ঞাপন (১ম)',
+    smartLink: 'https://www.profitableratecpmnetwork.com/dtexun9wfc?key=96fef72f5b581d12399d905cebe39a75',
+    reward: 5,
+    dailyLimit: 5,
+    cooldownSeconds: 15,
+    active: true,
+    category: 'smartlink',
+    badge: 'টপ সিপিএম'
+  },
   {
     id: 'task-1',
     nameId: 'Smartlink_1',

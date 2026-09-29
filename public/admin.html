@@ -36,7 +36,7 @@
   <!-- PIN LOCK SCREEN -->
   <div id="pinScreen" class="fixed inset-0 z-50 bg-gradient-to-br from-emerald-800 to-green-900 flex items-center justify-center p-4">
     <div class="bg-white p-7 rounded-3xl w-full max-w-sm text-center shadow-2xl border border-emerald-100">
-      <div className="w-18 h-18 bg-emerald-100 text-emerald-700 rounded-3xl mx-auto flex items-center justify-center mb-4 text-3xl">
+      <div class="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-3xl mx-auto flex items-center justify-center mb-4 text-3xl">
         <i class="fa-solid fa-shield-halved"></i>
       </div>
       <h2 class="text-xl font-black text-gray-900 mb-1">JME Ads অ্যাডমিন প্যানেল</h2>
@@ -44,7 +44,7 @@
       
       <div class="mb-4">
         <input type="password" id="pinInput" maxlength="8" placeholder="পিন লিখুন (ডিফল্ট: 1234)" 
-          class="w-full py-3.5 px-4 text-center text-xl font-bold tracking-widest rounded-2xl border-2 border-emerald-200 bg-gray-50 focus:bg-white focus:border-emerald-600 outline-none transition-all">
+          class="w-full py-3.5 px-4 text-center text-xl font-bold tracking-widest rounded-2xl border-2 border-emerald-200 bg-gray-50 focus:bg-white focus:border-emerald-600 outline-none transition-all font-eng">
       </div>
       
       <button onclick="verifyPin()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-green-600 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/30 active:scale-95 transition-all cursor-pointer">
@@ -67,7 +67,7 @@
           <h1 class="font-extrabold text-sm text-gray-900 leading-tight">অ্যাডমিন ড্যাশবোর্ড</h1>
           <div class="flex items-center gap-1.5">
             <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span class="text-[10px] font-bold text-emerald-700" id="liveDbStatus">ক্লাউড ডাটাবেজ লাইভ</span>
+            <span class="text-[10px] font-bold text-emerald-700" id="liveDbStatus">ক্লাউড ডাটাবেজ লাইভ সিঙ্ক</span>
           </div>
         </div>
       </div>
@@ -101,20 +101,26 @@
       <!-- Quick Actions -->
       <div class="bg-white p-4 rounded-3xl border border-gray-100 shadow-xs">
         <h3 class="font-extrabold text-xs text-gray-800 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-          <i class="fa-solid fa-bolt text-amber-500"></i> দ্রুত কন্ট্রোল
+          <i class="fa-solid fa-bolt text-amber-500"></i> দ্রুত কন্ট্রোল মেনু
         </h3>
         <div class="grid grid-cols-2 gap-2 text-xs">
+          <button onclick="switchTab('microjobs')" class="py-2.5 px-3 rounded-2xl bg-teal-50 text-teal-900 border border-teal-200 font-bold flex items-center justify-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-briefcase text-teal-600"></i> অফার ও ভিডিও জব (<span id="microJobsCount">০</span>)
+          </button>
+          <button onclick="switchTab('tasks')" class="py-2.5 px-3 rounded-2xl bg-emerald-50 text-emerald-900 border border-emerald-200 font-bold flex items-center justify-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-list-check text-emerald-600"></i> স্মার্টলিংক বিজ্ঞাপন
+          </button>
+          <button onclick="switchTab('users')" class="py-2.5 px-3 rounded-2xl bg-blue-50 text-blue-900 border border-blue-200 font-bold flex items-center justify-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-users text-blue-600"></i> ইউজার ও রেফারেল
+          </button>
           <button onclick="switchTab('withdrawals')" class="py-2.5 px-3 rounded-2xl bg-amber-50 text-amber-900 border border-amber-200 font-bold flex items-center justify-center gap-1.5 cursor-pointer">
-            <i class="fa-solid fa-hand-holding-dollar text-amber-600"></i> পেমেন্ট দেখুন (<span id="wdTotalPending">০</span>)
+            <i class="fa-solid fa-hand-holding-dollar text-amber-600"></i> পেমেন্ট অর্ডার (<span id="wdTotalPending">০</span>)
           </button>
           <button onclick="switchTab('ads')" class="py-2.5 px-3 rounded-2xl bg-purple-50 text-purple-900 border border-purple-200 font-bold flex items-center justify-center gap-1.5 cursor-pointer">
             <i class="fa-solid fa-rectangle-ad text-purple-600"></i> ব্যানার ও নেটিভ অ্যাড
           </button>
-          <button onclick="switchTab('tasks')" class="py-2.5 px-3 rounded-2xl bg-emerald-50 text-emerald-900 border border-emerald-200 font-bold flex items-center justify-center gap-1.5 cursor-pointer">
-            <i class="fa-solid fa-list-check text-emerald-600"></i> বিজ্ঞাপন স্মার্টলিংক
-          </button>
-          <button onclick="switchTab('settings')" class="py-2.5 px-3 rounded-2xl bg-blue-50 text-blue-900 border border-blue-200 font-bold flex items-center justify-center gap-1.5 cursor-pointer">
-            <i class="fa-solid fa-sliders text-blue-600"></i> সিস্টেম সেটিংস
+          <button onclick="switchTab('settings')" class="py-2.5 px-3 rounded-2xl bg-slate-50 text-slate-900 border border-slate-200 font-bold flex items-center justify-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-sliders text-slate-600"></i> সিস্টেম সেটিংস
           </button>
         </div>
       </div>
@@ -148,15 +154,71 @@
       </div>
     </section>
 
-    <!-- TAB 2: WITHDRAWALS -->
-    <section id="tab-withdrawals" class="space-y-3 hidden">
+    <!-- TAB 2: MICRO JOBS & OFFERS (NEW!) -->
+    <section id="tab-microjobs" class="space-y-3 hidden">
       <div class="flex items-center justify-between px-1">
-        <h2 class="font-black text-sm text-gray-900">সকল উত্তোলন আবেদন</h2>
-        <span class="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full" id="pendingBadge">০ টি পেন্ডিং</span>
+        <div>
+          <h2 class="font-black text-sm text-gray-900">মাইক্রো জব ও অফার লিস্ট ম্যানেজার</h2>
+          <p class="text-[11px] text-gray-500">ইউটিউব ভিডিও টাস্ক, ওয়েবসাইট ভিজিট বা নতুন অফার যুক্ত করুন</p>
+        </div>
       </div>
 
-      <div id="allWithdrawalsContainer" class="space-y-2.5">
-        <p class="text-xs text-gray-400 text-center py-6">লোড হচ্ছে...</p>
+      <!-- Add New Micro Job Form -->
+      <div class="bg-white p-4 rounded-3xl border border-teal-200 shadow-xs space-y-2.5">
+        <h4 class="font-extrabold text-xs text-teal-900 flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-plus text-teal-600"></i> নতুন অফার / ইউটিউব ভিডিও জব যোগ করুন
+        </h4>
+        
+        <div>
+          <label class="text-[10px] font-bold text-gray-700 block mb-0.5">কাজের শিরোনাম / নাম:</label>
+          <input type="text" id="newJobTitle" placeholder="যেমন: ইউটিউব ভিডিও দেখুন (২ মিনিট)" class="w-full p-2.5 rounded-xl border border-gray-200 text-xs">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[10px] font-bold text-gray-700 block mb-0.5">ক্যাটাগরি:</label>
+            <select id="newJobCategory" class="w-full p-2 rounded-xl border border-gray-200 text-xs bg-white">
+              <option value="youtube">📺 ইউটিউব ভিডিও</option>
+              <option value="subscribe">🔔 চ্যানেল সাবস্ক্রাইব</option>
+              <option value="website">🌐 ওয়েবসাইট ভিজিট</option>
+              <option value="special">⚡ স্পেশাল অফার</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-gray-700 block mb-0.5">পজিশন / প্রায়োরিটি (উচ্চ = উপরে):</label>
+            <input type="number" id="newJobPriority" value="100" class="w-full p-2 rounded-xl border border-gray-200 text-xs font-eng">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[10px] font-bold text-gray-700 block mb-0.5">কত সেকেন্ড দেখতে হবে:</label>
+            <input type="number" id="newJobDuration" value="120" placeholder="১২০ সেকেন্ড" class="w-full p-2 rounded-xl border border-gray-200 text-xs font-eng">
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-gray-700 block mb-0.5">রিওয়ার্ড টাকা (৳):</label>
+            <input type="number" id="newJobReward" value="10" placeholder="১০ টাকা" class="w-full p-2 rounded-xl border border-gray-200 text-xs font-eng">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-gray-700 block mb-0.5">ইউটিউব ভিডিও বা অফারের URL লিংক:</label>
+          <input type="url" id="newJobUrl" placeholder="https://www.youtube.com/watch?v=..." class="w-full p-2.5 rounded-xl border border-gray-200 text-xs font-eng">
+        </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-gray-700 block mb-0.5">কাজের বিস্তারিত নিয়মাবলী (ডেসক্রিপশন):</label>
+          <textarea id="newJobDescription" rows="2" placeholder="যেমন: ভিডিওটি সম্পূর্ণ ২ মিনিট মনোযোগ সহকারে দেখুন। লাইক ও সাবস্ক্রাইব করুন। টাইমার শেষ হলে ব্যালেন্স যোগ হবে।" class="w-full p-2 rounded-xl border border-gray-200 text-xs"></textarea>
+        </div>
+
+        <button onclick="addNewMicroJob()" class="w-full py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-xl text-xs font-extrabold shadow-sm active:scale-95 transition-all cursor-pointer">
+          <i class="fa-solid fa-cloud-arrow-up mr-1"></i> অফারটি ক্লাউডে পাবলিশ করুন
+        </button>
+      </div>
+
+      <!-- Live Micro Jobs List in Firestore -->
+      <div id="microJobsListContainer" class="space-y-2">
+        <p class="text-xs text-gray-400 text-center py-4">অফার লিস্ট লোড হচ্ছে...</p>
       </div>
     </section>
 
@@ -193,7 +255,34 @@
       </div>
     </section>
 
-    <!-- TAB 4: AD NETWORKS (Banner Ads, Native Ads, Popunder, APK Download) -->
+    <!-- TAB 4: USERS & REFERRALS (NEW!) -->
+    <section id="tab-users" class="space-y-3 hidden">
+      <div class="flex items-center justify-between px-1">
+        <div>
+          <h2 class="font-black text-sm text-gray-900">ইউজার ও রেফারেল ট্র্যাকার</h2>
+          <p class="text-[11px] text-gray-500">কে কাকে রেফার করেছে এবং মোট রেফারেল সংখ্যা</p>
+        </div>
+        <span class="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full" id="usersListTotalBadge">০ জন ইউজার</span>
+      </div>
+
+      <div id="allUsersContainer" class="space-y-2.5">
+        <p class="text-xs text-gray-400 text-center py-6">ইউজার ডাটা লোড হচ্ছে...</p>
+      </div>
+    </section>
+
+    <!-- TAB 5: WITHDRAWALS -->
+    <section id="tab-withdrawals" class="space-y-3 hidden">
+      <div class="flex items-center justify-between px-1">
+        <h2 class="font-black text-sm text-gray-900">সকল উত্তোলন আবেদন</h2>
+        <span class="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full" id="pendingBadge">০ টি পেন্ডিং</span>
+      </div>
+
+      <div id="allWithdrawalsContainer" class="space-y-2.5">
+        <p class="text-xs text-gray-400 text-center py-6">লোড হচ্ছে...</p>
+      </div>
+    </section>
+
+    <!-- TAB 6: AD NETWORKS (Banner Ads, Native Ads, Popunder, APK Download) -->
     <section id="tab-ads" class="space-y-3 hidden">
       <div class="px-1">
         <h2 class="font-black text-sm text-gray-900">বিজ্ঞাপন নেটওয়ার্ক কনফিগারেশন</h2>
@@ -242,7 +331,7 @@
       </div>
     </section>
 
-    <!-- TAB 5: SETTINGS & VIDEOS -->
+    <!-- TAB 7: SETTINGS & VIDEOS -->
     <section id="tab-settings" class="space-y-3 hidden">
       <div class="px-1">
         <h2 class="font-black text-sm text-gray-900">ভিডিও ও আর্নিং সেটিংস</h2>
@@ -306,30 +395,40 @@
     </section>
 
     <!-- BOTTOM APP NAVIGATION -->
-    <nav class="fixed bottom-3 left-3 right-3 max-w-md mx-auto bg-gray-900 text-white rounded-2xl p-1.5 flex items-center justify-around z-40 shadow-xl border border-gray-800">
-      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="flex flex-col items-center gap-0.5 text-[10px] font-bold text-emerald-400 py-1 px-2.5 transition-all cursor-pointer">
-        <i class="fa-solid fa-chart-pie text-sm"></i>
-        <span>ড্যাশবোর্ড</span>
+    <nav class="fixed bottom-3 left-3 right-3 max-w-md mx-auto bg-gray-900 text-white rounded-2xl p-1 flex items-center justify-around z-40 shadow-xl border border-gray-800">
+      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="flex flex-col items-center gap-0.5 text-[9px] font-bold text-emerald-400 py-1 px-1.5 transition-all cursor-pointer">
+        <i class="fa-solid fa-chart-pie text-xs"></i>
+        <span>হোম</span>
       </button>
 
-      <button onclick="switchTab('withdrawals')" id="nav-withdrawals" class="flex flex-col items-center gap-0.5 text-[10px] font-bold text-gray-400 py-1 px-2.5 transition-all relative cursor-pointer">
-        <i class="fa-solid fa-hand-holding-dollar text-sm"></i>
+      <button onclick="switchTab('microjobs')" id="nav-microjobs" class="flex flex-col items-center gap-0.5 text-[9px] font-bold text-gray-400 py-1 px-1.5 transition-all cursor-pointer">
+        <i class="fa-solid fa-briefcase text-xs"></i>
+        <span>অফার জব</span>
+      </button>
+
+      <button onclick="switchTab('tasks')" id="nav-tasks" class="flex flex-col items-center gap-0.5 text-[9px] font-bold text-gray-400 py-1 px-1.5 transition-all cursor-pointer">
+        <i class="fa-solid fa-list-check text-xs"></i>
+        <span>স্মার্টলিংক</span>
+      </button>
+
+      <button onclick="switchTab('users')" id="nav-users" class="flex flex-col items-center gap-0.5 text-[9px] font-bold text-gray-400 py-1 px-1.5 transition-all cursor-pointer">
+        <i class="fa-solid fa-users text-xs"></i>
+        <span>ইউজার</span>
+      </button>
+
+      <button onclick="switchTab('withdrawals')" id="nav-withdrawals" class="flex flex-col items-center gap-0.5 text-[9px] font-bold text-gray-400 py-1 px-1.5 transition-all relative cursor-pointer">
+        <i class="fa-solid fa-hand-holding-dollar text-xs"></i>
         <span>পেমেন্ট</span>
         <span id="navPendingBadge" class="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.2 rounded-full hidden">০</span>
       </button>
 
-      <button onclick="switchTab('tasks')" id="nav-tasks" class="flex flex-col items-center gap-0.5 text-[10px] font-bold text-gray-400 py-1 px-2.5 transition-all cursor-pointer">
-        <i class="fa-solid fa-list-check text-sm"></i>
-        <span>স্মার্টলিংক</span>
+      <button onclick="switchTab('ads')" id="nav-ads" class="flex flex-col items-center gap-0.5 text-[9px] font-bold text-gray-400 py-1 px-1.5 transition-all cursor-pointer">
+        <i class="fa-solid fa-rectangle-ad text-xs"></i>
+        <span>অ্যাড কোড</span>
       </button>
 
-      <button onclick="switchTab('ads')" id="nav-ads" class="flex flex-col items-center gap-0.5 text-[10px] font-bold text-gray-400 py-1 px-2.5 transition-all cursor-pointer">
-        <i class="fa-solid fa-rectangle-ad text-sm"></i>
-        <span>অ্যাড নেটওয়ার্ক</span>
-      </button>
-
-      <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center gap-0.5 text-[10px] font-bold text-gray-400 py-1 px-2.5 transition-all cursor-pointer">
-        <i class="fa-solid fa-sliders text-sm"></i>
+      <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center gap-0.5 text-[9px] font-bold text-gray-400 py-1 px-1.5 transition-all cursor-pointer">
+        <i class="fa-solid fa-sliders text-xs"></i>
         <span>সেটিংস</span>
       </button>
     </nav>
@@ -360,6 +459,8 @@
 
     let pendingWithdrawals = [];
     let allTasks = [];
+    let allMicroJobs = [];
+    let allUsersList = [];
     let currentSettings = {
       adReward: 5,
       referralReward: 50,
@@ -406,7 +507,7 @@
     }
 
     function switchTab(tabName) {
-      ['dashboard', 'withdrawals', 'tasks', 'ads', 'settings'].forEach(t => {
+      ['dashboard', 'microjobs', 'tasks', 'users', 'withdrawals', 'ads', 'settings'].forEach(t => {
         const sec = document.getElementById('tab-' + t);
         if (sec) sec.classList.add('hidden');
         const btn = document.getElementById('nav-' + t);
@@ -445,9 +546,14 @@
     }
 
     function initFirebaseListeners() {
-      // 1. Total Registered Users
+      // 1. Total Registered Users and referral tracking
       db.collection('users').onSnapshot((snapshot) => {
         document.getElementById('statUserCount').innerText = snapshot.size.toLocaleString('bn-BD');
+        document.getElementById('usersListTotalBadge').innerText = snapshot.size.toLocaleString('bn-BD') + ' জন ইউজার';
+        allUsersList = [];
+        snapshot.forEach(d => allUsersList.push({ id: d.id, ...d.data() }));
+        allUsersList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        renderUsers();
       }, console.warn);
 
       // 2. Pending Withdrawals
@@ -484,7 +590,6 @@
           populateSettingsInputs();
         }
       }, () => {
-        // Fallback to settings/app
         db.collection('settings').doc('app').get().then(d => {
           if (d.exists) {
             currentSettings = { ...currentSettings, ...d.data() };
@@ -503,8 +608,253 @@
           loadDefaultSmartlinks();
         }
       }, () => loadDefaultSmartlinks());
+
+      // 5. Micro Jobs from Firestore
+      db.collection('micro_jobs').onSnapshot((snapshot) => {
+        if (!snapshot.empty) {
+          allMicroJobs = [];
+          snapshot.forEach(d => allMicroJobs.push({ id: d.id, ...d.data() }));
+          allMicroJobs.sort((a, b) => (b.priority || 0) - (a.priority || 0) || (b.createdAt || 0) - (a.createdAt || 0));
+          document.getElementById('microJobsCount').innerText = allMicroJobs.length.toLocaleString('bn-BD');
+          renderMicroJobs();
+        } else {
+          loadDefaultMicroJobs();
+        }
+      }, () => loadDefaultMicroJobs());
     }
 
+    // MICRO JOBS MANAGEMENT
+    const DEFAULT_MICRO_JOBS = [
+      {
+        id: 'job_top_yt',
+        title: 'ইউটিউব ভিডিও দেখুন (২ মিনিট)',
+        category: 'youtube',
+        categoryLabel: 'ইউটিউব ভিডিও',
+        description: 'ভিডিওটি সম্পূর্ণ ১২০ সেকেন্ড মনোযোগ সহকারে দেখুন। টাইমার শেষ হলে স্বয়ংক্রিয়ভাবে ৳১০ টাকা আপনার ব্যালেন্সে যোগ হবে।',
+        url: 'https://www.youtube.com',
+        requiredDurationSeconds: 120,
+        reward: 10,
+        priority: 100,
+        active: true
+      },
+      {
+        id: 'job_yt_sub',
+        title: 'ইউটিউব চ্যানেল সাবস্ক্রাইব ও বেল আইকন',
+        category: 'subscribe',
+        categoryLabel: 'চ্যানেল সাবস্ক্রাইব',
+        description: 'চ্যানেলে প্রবেশ করে সাবস্ক্রাইব করুন এবং বেল আইকনে ক্লিক করুন। কমপক্ষে ৬০ সেকেন্ড অবস্থান করুন।',
+        url: 'https://www.youtube.com',
+        requiredDurationSeconds: 60,
+        reward: 8,
+        priority: 90,
+        active: true
+      }
+    ];
+
+    function loadDefaultMicroJobs() {
+      allMicroJobs = DEFAULT_MICRO_JOBS;
+      document.getElementById('microJobsCount').innerText = allMicroJobs.length.toLocaleString('bn-BD');
+      renderMicroJobs();
+    }
+
+    function renderMicroJobs() {
+      const container = document.getElementById('microJobsListContainer');
+      if (allMicroJobs.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">কোনো অফার পাওয়া যায়নি</p>';
+        return;
+      }
+
+      container.innerHTML = allMicroJobs.map((job, idx) => `
+        <div class="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-2xs space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${idx === 0 ? 'bg-amber-400 text-amber-950 font-bold' : 'bg-teal-50 text-teal-800'}">
+                ${idx === 0 ? '🔥 টপ অফার' : (job.categoryLabel || 'অফার')}
+              </span>
+              <span class="text-[10px] font-eng text-gray-500 font-bold">Priority: ${job.priority || 0}</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <button onclick="pinJobToTop('${job.id}')" title="সবার উপরে আনুন" class="px-2 py-1 text-[10px] bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg font-bold border border-amber-200 cursor-pointer">
+                <i class="fa-solid fa-arrow-up"></i> উপরে তুলুন
+              </button>
+              <button onclick="deleteMicroJob('${job.id}')" title="ডিলিট" class="text-rose-500 hover:text-rose-700 p-1 text-xs cursor-pointer ml-1">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[9px] text-gray-500 font-bold block">শিরোনাম:</label>
+            <input type="text" id="job-title-${job.id}" value="${job.title || ''}" class="w-full p-1.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[9px] text-gray-500 font-bold block">রিওয়ার্ড (৳):</label>
+              <input type="number" id="job-rew-${job.id}" value="${job.reward || 10}" class="w-full p-1.5 rounded-xl border border-gray-200 text-xs font-eng">
+            </div>
+            <div>
+              <label class="text-[9px] text-gray-500 font-bold block">সময় (সেকেন্ড):</label>
+              <input type="number" id="job-sec-${job.id}" value="${job.requiredDurationSeconds || 60}" class="w-full p-1.5 rounded-xl border border-gray-200 text-xs font-eng">
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[9px] text-gray-500 font-bold block">ভিডিও / কাজের লিংক:</label>
+            <input type="url" id="job-url-${job.id}" value="${job.url || ''}" class="w-full p-1.5 rounded-xl border border-gray-200 text-xs font-eng text-gray-700">
+          </div>
+
+          <div>
+            <label class="text-[9px] text-gray-500 font-bold block">কাজের নিয়মাবলী:</label>
+            <textarea id="job-desc-${job.id}" rows="2" class="w-full p-1.5 rounded-xl border border-gray-200 text-xs text-gray-600">${job.description || ''}</textarea>
+          </div>
+
+          <button onclick="saveSingleJob('${job.id}')" class="w-full py-1.5 bg-gray-100 hover:bg-emerald-50 hover:text-emerald-700 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer">
+            <i class="fa-solid fa-check mr-1"></i> এই অফারটি আপডেট করুন
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function addNewMicroJob() {
+      const title = document.getElementById('newJobTitle').value.trim();
+      const category = document.getElementById('newJobCategory').value;
+      const priority = parseInt(document.getElementById('newJobPriority').value) || 100;
+      const duration = parseInt(document.getElementById('newJobDuration').value) || 120;
+      const reward = parseFloat(document.getElementById('newJobReward').value) || 10;
+      const url = document.getElementById('newJobUrl').value.trim();
+      const description = document.getElementById('newJobDescription').value.trim();
+
+      if (!title || !url) {
+        showToast('কাজের শিরোনাম এবং লিংক আবশ্যক!', 'error');
+        return;
+      }
+
+      const labels = {
+        youtube: 'ইউটিউব ভিডিও',
+        subscribe: 'চ্যানেল সাবস্ক্রাইব',
+        website: 'ওয়েবসাইট ভিজিট',
+        special: 'স্পেশাল অফার'
+      };
+
+      const newId = 'job_' + Date.now();
+      const newJob = {
+        id: newId,
+        title,
+        category,
+        categoryLabel: labels[category] || 'অফার',
+        priority,
+        requiredDurationSeconds: duration,
+        reward,
+        url,
+        description: description || 'ভিডিওটি সম্পূর্ণ দেখুন। টাইমার শেষ হলে টাকা যোগ হবে।',
+        active: true,
+        totalSubmissions: 0,
+        createdAt: Date.now()
+      };
+
+      db.collection('micro_jobs').doc(newId).set(newJob).then(() => {
+        document.getElementById('newJobTitle').value = '';
+        document.getElementById('newJobUrl').value = '';
+        document.getElementById('newJobDescription').value = '';
+        showToast('নতুন অফার ক্লাউডে সফলভাবে যোগ হয়েছে!', 'success');
+      }).catch(err => showToast(err.message, 'error'));
+    }
+
+    function saveSingleJob(jobId) {
+      const title = document.getElementById(`job-title-${jobId}`).value.trim();
+      const reward = parseFloat(document.getElementById(`job-rew-${jobId}`).value) || 10;
+      const duration = parseInt(document.getElementById(`job-sec-${jobId}`).value) || 60;
+      const url = document.getElementById(`job-url-${jobId}`).value.trim();
+      const description = document.getElementById(`job-desc-${jobId}`).value.trim();
+
+      db.collection('micro_jobs').doc(jobId).update({
+        title,
+        reward,
+        requiredDurationSeconds: duration,
+        url,
+        description
+      }).then(() => {
+        showToast('অফার সফলভাবে আপডেট করা হয়েছে!', 'success');
+      }).catch(err => showToast(err.message, 'error'));
+    }
+
+    function pinJobToTop(jobId) {
+      const highestPriority = allMicroJobs.length > 0 ? Math.max(...allMicroJobs.map(j => j.priority || 0)) : 100;
+      const newPriority = highestPriority + 10;
+
+      db.collection('micro_jobs').doc(jobId).update({
+        priority: newPriority
+      }).then(() => {
+        showToast('অফারটি সফলভাবে সবার উপরে পিন করা হয়েছে!', 'success');
+      }).catch(err => showToast(err.message, 'error'));
+    }
+
+    function deleteMicroJob(jobId) {
+      if (!confirm('আপনি কি নিশ্চিত যে এই অফারটি মুছে ফেলতে চান?')) return;
+      db.collection('micro_jobs').doc(jobId).delete().then(() => {
+        showToast('অফার মুছে ফেলা হয়েছে!', 'info');
+      }).catch(err => showToast(err.message, 'error'));
+    }
+
+    // USERS & REFERRALS MANAGEMENT
+    function renderUsers() {
+      const container = document.getElementById('allUsersContainer');
+      if (allUsersList.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">কোনো রেজিস্টার্ড ইউজার পাওয়া যায়নি</p>';
+        return;
+      }
+
+      container.innerHTML = allUsersList.map(u => `
+        <div class="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-2xs space-y-2">
+          <div class="flex items-start justify-between">
+            <div>
+              <h4 class="font-extrabold text-xs text-gray-900">${u.name || 'ইউজার'}</h4>
+              <p class="text-[11px] font-eng text-gray-500">${u.email || ''}</p>
+              <p class="text-[11px] font-eng font-bold text-gray-600">${u.phone || 'ফোন নেই'}</p>
+            </div>
+            <div class="text-right">
+              <span class="text-sm font-black font-eng text-emerald-700 block">৳${(u.balance || 0).toFixed(2)}</span>
+              <span class="text-[9px] font-bold text-gray-400 block font-eng">আয়: ৳${(u.totalEarned || 0).toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-1.5 p-2 rounded-xl bg-gray-50 border border-gray-100 text-[11px]">
+            <div>
+              <span class="text-gray-500 block text-[9px]">রেফার কোড:</span>
+              <strong class="font-eng font-black text-emerald-800">${u.referralCode || 'N/A'}</strong>
+            </div>
+            <div>
+              <span class="text-gray-500 block text-[9px]">মোট রেফার করেছে:</span>
+              <strong class="font-black text-amber-700">${u.referralCount || 0} জন</strong>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-[10px] text-gray-500 border-t border-gray-100 pt-1.5">
+            <span>কার রেফারে জয়েন: <strong class="font-eng text-gray-800">${u.referredBy || 'কেউ না'}</strong></span>
+            <div class="flex gap-1">
+              <button onclick="quickAddUserBalance('${u.id}', 50)" class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg font-bold hover:bg-emerald-100 cursor-pointer">
+                +৳৫০
+              </button>
+              <button onclick="quickAddUserBalance('${u.id}', -20)" class="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-bold hover:bg-rose-100 cursor-pointer">
+                -৳২০
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function quickAddUserBalance(userId, amount) {
+      db.collection('users').doc(userId).update({
+        balance: firebase.firestore.FieldValue.increment(amount),
+        totalEarned: firebase.firestore.FieldValue.increment(amount > 0 ? amount : 0)
+      }).then(() => {
+        showToast(`ইউজারের ব্যালেন্সে ৳${amount} সমন্বয় করা হয়েছে!`, 'success');
+      }).catch(err => showToast(err.message, 'error'));
+    }
+
+    // WITHDRAWALS MANAGEMENT
     function renderWithdrawals() {
       const container = document.getElementById('allWithdrawalsContainer');
       const quickContainer = document.getElementById('quickWithdrawalList');
@@ -590,7 +940,9 @@
       }).catch(err => showToast(err.message, 'error'));
     }
 
+    // SMARTLINKS MANAGEMENT (User's high CPM link at the top!)
     const DEFAULT_SMARTLINKS = [
+      { id: 'task-top-cpm', title: '🔥 হাই-সিপিএম বিশেষ বিজ্ঞাপন (১ম)', reward: 5, url: 'https://www.profitableratecpmnetwork.com/dtexun9wfc?key=96fef72f5b581d12399d905cebe39a75' },
       { id: 'task-1', title: 'স্মার্টলিংক ১', reward: 5, url: 'https://www.profitableratecpmnetwork.com/dn6tywp8s?key=1c978451e0c5340bb6764aad93b2a043' },
       { id: 'task-2', title: 'স্মার্টলিংক ২', reward: 5, url: 'https://www.profitableratecpmnetwork.com/ywpqxux1mn?key=f766995ab751cc071fac4888e44096f4' },
       { id: 'task-3', title: 'স্মার্টলিংক ৩', reward: 5, url: 'https://www.profitableratecpmnetwork.com/erydxfyy?key=d77d76c50e091d021e2675630fab1512' },
@@ -618,7 +970,7 @@
               </button>
             </div>
           </div>
-          <input type="url" id="task-url-${idx}" value="${t.url}" placeholder="অ্যাড স্মার্টলিংক URL" class="w-full p-2 text-xs font-eng border border-gray-200 rounded-xl text-gray-700">
+          <input type="url" id="task-url-${idx}" value="${t.url || t.smartLink || ''}" placeholder="অ্যাড স্মার্টলিংক URL" class="w-full p-2 text-xs font-eng border border-gray-200 rounded-xl text-gray-700">
         </div>
       `).join('');
     }
@@ -639,6 +991,7 @@
         title,
         banglaTitle: title,
         url,
+        smartLink: url,
         reward,
         dailyLimit: 3,
         cooldownSeconds: 15,
@@ -665,13 +1018,14 @@
       allTasks.forEach((t, idx) => {
         const urlEl = document.getElementById(`task-url-${idx}`);
         const rewEl = document.getElementById(`task-rew-${idx}`);
-        const newUrl = urlEl ? urlEl.value.trim() : t.url;
+        const newUrl = urlEl ? urlEl.value.trim() : (t.url || t.smartLink);
         const newRew = rewEl ? parseFloat(rewEl.value) || 5 : t.reward;
         
         const docRef = db.collection('tasks').doc(t.id);
         batch.set(docRef, {
           ...t,
           url: newUrl,
+          smartLink: newUrl,
           reward: newRew,
           active: true
         }, { merge: true });
@@ -713,7 +1067,6 @@
         youtubeVideo2Url: document.getElementById('settingVideo2Url').value.trim()
       };
 
-      // Write to both settings/app_config and settings/app
       const p1 = db.collection('settings').doc('app_config').set(updated, { merge: true });
       const p2 = db.collection('settings').doc('app').set(updated, { merge: true });
 
@@ -747,7 +1100,6 @@
         return;
       }
 
-      // Search user by email or phone
       const emailQuery = db.collection('users').where('email', '==', q.toLowerCase()).limit(1).get();
       const phoneQuery = db.collection('users').where('phone', '==', q).limit(1).get();
 
