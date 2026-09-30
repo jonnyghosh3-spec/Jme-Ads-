@@ -13,6 +13,13 @@ import {
   ContactMessageItem,
   AIAnalyticsReport
 } from '../types';
+import { 
+  triggerDeviceNotification, 
+  requestDeviceNotificationPermission, 
+  getNotificationPermissionStatus,
+  broadcastPushNotificationToAll,
+  syncCurrentSubscription
+} from '../utils/pushNotifications';
 import { DEFAULT_TASKS, DEFAULT_APP_SETTINGS } from '../data/defaultTasks';
 import { 
   auth, 
@@ -136,6 +143,10 @@ interface AppContextType {
   submitContactMessage: (msg: { name: string; contact: string; subject?: string; message: string }) => Promise<{ success: boolean; message?: string }>;
   adminDeleteMessage: (id: string) => Promise<void>;
   adminMarkMessageRead: (id: string) => Promise<void>;
+  // Device Push Notifications
+  notificationPermission: 'granted' | 'denied' | 'default' | 'unsupported';
+  requestDeviceNotificationPermission: () => Promise<boolean>;
+  triggerDeviceNotification: (title: string, options: { body: string; icon?: string; badge?: string; url?: string }) => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -240,6 +251,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const saved = localStorage.getItem(STORAGE_KEYS.MESSAGES);
     return saved ? JSON.parse(saved) : [];
   });
+  const [notificationPermission, setNotificationPermission] = useState<'granted' | 'denied' | 'default' | 'unsupported'>(() => {
+    return getNotificationPermissionStatus();
+  });
+
+  const handleRequestNotificationPermission = async (): Promise<boolean> => {
+    const granted = await requestDeviceNotificationPermission(user?.uid);
+    setNotificationPermission(getNotificationPermissionStatus());
+    if (granted) {
+      showToast('🎉 মোবাইলে নোটিফিকেশন সফলভাবে চালু হয়েছে!', 'success');
+    } else {
+      showToast('নোটিফিকেশন অনুমতি প্রদান করা হয়নি', 'warning');
+    }
+    return granted;
+  };
   const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -423,16 +448,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             const data = change.doc.data() as NotificationItem;
             // If it's a recent notification (created in the last 2 minutes)
             if (Date.now() - (data.createdAt || 0) < 120000) {
-              if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-                try {
-                  new Notification(data.title || 'JME Ads বিজ্ঞপ্তি', {
-                    body: data.message,
-                    icon: 'https://i.supaimg.com/88cac59e-85c9-44fa-970b-faf486de12c5/cfd4da92-da3f-4f1a-b3dd-bcb09a3ba09a.png'
-                  });
-                } catch (err) {
-                  console.warn('Browser push display err:', err);
-                }
-              }
+              triggerDeviceNotification(data.title || 'JME Ads বিজ্ঞপ্তি', {
+                body: data.message || 'নতুন নোটিফিকেশন এসেছে!',
+                icon: '/pwa-192x192.png',
+                badge: '/pwa-192x192.png',
+                url: '/'
+              });
             }
           }
         });
@@ -456,6 +477,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.warn('Notification listener setup warning:', e);
     }
   }, []);
+
+  // Synchronize mobile push subscription on startup / user change
+  useEffect(() => {
+    syncCurrentSubscription(user?.uid);
+  }, [user?.uid]);
 
   // Track Firebase Auth state
   useEffect(() => {
@@ -2093,16 +2119,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setNotifications(prev => [newNotif, ...prev]);
 
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-      try {
-        new Notification(title, {
-          body: message,
-          icon: 'https://i.supaimg.com/88cac59e-85c9-44fa-970b-faf486de12c5/cfd4da92-da3f-4f1a-b3dd-bcb09a3ba09a.png'
-        });
-      } catch (e) {
-        console.warn('Browser notification trigger warning:', e);
-      }
-    }
+    // Trigger true ServiceWorker mobile/web push notification
+    triggerDeviceNotification(title, {
+      body: message,
+      icon: '/pwa-192x192.png',
+      badge: '/pwa-192x192.png',
+      url: '/'
+    });
+
+    // Send encrypted WebPush to all subscribed mobile devices (via Google FCM / Apple Push)
+    broadcastPushNotificationToAll(title, message, '/');
 
     showToast('ব্রডকাস্ট নোটিফিকেশন সকল ইউজারের কাছে পাঠানো হয়েছে!', 'success');
   };
@@ -2220,7 +2246,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         contactMessages,
         submitContactMessage,
         adminDeleteMessage,
-        adminMarkMessageRead
+        adminMarkMessageRead,
+        notificationPermission,
+        requestDeviceNotificationPermission: handleRequestNotificationPermission,
+        triggerDeviceNotification
       }}
     >
       {children}

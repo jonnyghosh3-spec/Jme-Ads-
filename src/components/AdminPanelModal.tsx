@@ -33,7 +33,8 @@ import {
   Bell,
   Mail,
   ArrowLeft,
-  Bot
+  Bot,
+  Smartphone
 } from 'lucide-react';
 
 export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
@@ -1771,6 +1772,24 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
                   <div>
                     <h3 className="font-extrabold text-base text-white">ব্রডকাস্ট পুশ নোটিফিকেশন পাঠান</h3>
                     <p className="text-xs text-slate-400">সকল ইউজারের অ্যাপ এবং ডিভাইসে তাৎক্ষণিক নোটিফিকেশন পাঠাতে পারবেন</p>
+                  </div>
+
+                  {/* Device Push Live Status Banner */}
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/80 to-slate-900 border border-emerald-500/30 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <Smartphone className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-white flex items-center gap-1.5">
+                          <span>মোবাইল ব্যাকগ্রাউন্ড পুশ ইঞ্জিন সক্রিয়</span>
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        </div>
+                        <p className="text-[11px] text-emerald-300/80">
+                          মেসেজটি ডাটাবেজে জমা হবে এবং সার্ভিস ওয়ার্কারের মাধ্যমে ফোনের লকস্ক্রিন ও নোটিফিকেশন বারে পৌঁছাবে।
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   <form onSubmit={handleSendBroadcast} className="p-5 rounded-3xl bg-slate-950 border border-slate-800 space-y-4">

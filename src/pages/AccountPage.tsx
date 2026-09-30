@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { compressImage } from '../utils/imageCompressor';
+import { triggerDeviceNotification } from '../utils/pushNotifications';
 import { 
   User, 
   Copy, 
@@ -24,11 +25,21 @@ import {
   Shield,
   Camera,
   Upload,
-  Check
+  Check,
+  Bell
 } from 'lucide-react';
 
 export const AccountPage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSupport }) => {
-  const { user, logout, setActiveTab, showToast, setShowAdminModal, updateUserAvatar } = useApp();
+  const { 
+    user, 
+    logout, 
+    setActiveTab, 
+    showToast, 
+    setShowAdminModal, 
+    updateUserAvatar,
+    notificationPermission,
+    requestDeviceNotificationPermission
+  } = useApp();
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(user?.name || '');
   const [editPhone, setEditPhone] = useState(user?.phone || '');
@@ -364,6 +375,46 @@ export const AccountPage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSup
           </div>
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </button>
+
+        {/* Mobile Device Push Notifications Setting */}
+        <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+              <Bell className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="font-bold text-xs text-gray-900">মোবাইল নোটিফিকেশন</h4>
+              <p className="text-[10px] text-gray-500">
+                {notificationPermission === 'granted' ? 'ফোনে সরাসরি পুশ নোটিফিকেশন চালু আছে' : 'নোটিফিকেশন বন্ধ রয়েছে'}
+              </p>
+            </div>
+          </div>
+          {notificationPermission === 'granted' ? (
+            <div className="flex items-center gap-1.5">
+              <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white font-bold text-[10px]">
+                সক্রিয় ✓
+              </span>
+              <button
+                onClick={() => triggerDeviceNotification('🔔 JME Ads টেস্ট নোটিফিকেশন', { body: 'আপনার মোবাইলে ব্যাকগ্রাউন্ড পুশ শতভাগ কার্যকর রয়েছে!' })}
+                className="px-2 py-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-bold active:scale-95 transition-all"
+                title="টেস্ট নোটিফিকেশন পাঠান"
+              >
+                টেস্ট
+              </button>
+            </div>
+          ) : notificationPermission === 'denied' ? (
+            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+              ব্লক (Settings থেকে খুলুন)
+            </span>
+          ) : (
+            <button
+              onClick={requestDeviceNotificationPermission}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer active:scale-95 shadow-xs"
+            >
+              চালু করুন
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 5. Logout Button */}
