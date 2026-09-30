@@ -19,6 +19,10 @@
     "telegramUrl": "https://t.me/JMEAds_Official",
     "supportWhatsapp": "",
     "publisherUpgradeFee": 30,
+    "publisherUpgradeBkash": "01722169178",
+    "publisherUpgradeNagad": "",
+    "isBkashActive": true,
+    "isNagadActive": false,
     "announcement": "স্বাগতম JME Ads-এ! প্রতিটি বিজ্ঞাপনে পাচ্ছেন ৳৫ এবং প্রতি রেফারে ৳৫০ নিশ্চিত বোনাস। ১৫ সেকেন্ডের আগে ফিরে এলে কাজ বাতিল হবে।"
   },
   "tasks": [

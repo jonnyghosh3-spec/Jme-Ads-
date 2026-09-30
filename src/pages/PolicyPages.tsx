@@ -10,7 +10,12 @@ import {
   Send,
   HelpCircle,
   Clock,
-  Sparkles
+  Sparkles,
+  AlertTriangle,
+  Cookie,
+  BookOpen,
+  Award,
+  Globe
 } from 'lucide-react';
 
 export const PolicyHeader: React.FC<{ title: string; subtitle: string; icon: React.ReactNode }> = ({ title, subtitle, icon }) => {
@@ -72,7 +77,7 @@ export const PrivacyPolicyPage: React.FC = () => {
             When you register for an account or interact with our platform, we may collect personal information including:
           </p>
           <ul className="list-disc pl-5 space-y-1 text-gray-600">
-            <li><strong>Personal Identification:</strong> Name, email address, and mobile phone number for account identification and payout delivery.</li>
+            <li><strong>Personal Identification:</strong> Name, email address, mobile phone number, and optional profile avatar.</li>
             <li><strong>Activity & Task Data:</strong> Timestamps of viewed advertisements, completed micro-tasks, and proof screenshots submitted for verification.</li>
             <li><strong>Log Files:</strong> Standard internet log information including browser type, referring/exit pages, date/time stamps, Internet Protocol (IP) addresses, and device identifiers to prevent bot fraud.</li>
           </ul>
@@ -98,43 +103,40 @@ export const PrivacyPolicyPage: React.FC = () => {
             <span>4. Google DoubleClick DART Cookies & Third-Party Advertising</span>
           </h2>
           <p>
-            Google is a third-party vendor on our site. It uses cookies, known as DART cookies, to serve ads to our site visitors based upon their visit to our site and other sites on the internet. However, visitors may choose to decline the use of DART cookies by visiting the Google ad and content network Privacy Policy at the following URL: <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer" className="text-emerald-700 underline font-semibold">https://policies.google.com/technologies/ads</a>.
+            Google is one of a third-party vendor on our site. It also uses cookies, known as DART cookies, to serve ads to our site visitors based upon their visit to our site and other sites on the internet. However, visitors may choose to decline the use of DART cookies by visiting the Google ad and content network Privacy Policy at: <span className="text-emerald-700 font-semibold underline">https://policies.google.com/technologies/ads</span>.
           </p>
           <p>
-            Third-party ad servers or ad networks use technologies like cookies, JavaScript, or Web Beacons in their respective advertisements and links that appear on JME Ads. They automatically receive your IP address when this occurs. These technologies are used to measure the effectiveness of their advertising campaigns and/or to personalize the advertising content that you see on websites that you visit.
-          </p>
-          <p className="text-[11px] text-gray-500 italic">
-            Note: JME Ads has no access to or control over these cookies that are used by third-party advertisers.
+            Some of our advertising partners may use cookies and web beacons on our site. Our advertising partners include Google AdSense and accredited digital ad networks. Each of our advertising partners has their own Privacy Policy for their policies on user data.
           </p>
         </section>
 
         <section className="space-y-1.5">
           <h2 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>5. CCPA & GDPR Privacy Rights</span>
+            <span>5. CCPA Privacy Rights (Do Not Sell My Personal Information)</span>
           </h2>
           <p>
-            We respect your privacy rights under GDPR and CCPA. Every user is entitled to the right to access, rectification, erasure, restrict processing, and data portability. If you make a request, we have one month to respond to you. If you would like to exercise any of these rights, please submit an inquiry via our Contact Us portal.
+            Under the California Consumer Privacy Act (CCPA), consumers have the right to request disclosure of personal data categories collected, request deletion of personal data, and request that a business not sell their personal data. If you make a request, we have one month to respond to you. Please contact our administrative office via the Contact page.
           </p>
         </section>
 
         <section className="space-y-1.5">
           <h2 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>6. Children's Information (COPPA)</span>
+            <span>6. GDPR Data Protection Rights</span>
           </h2>
           <p>
-            Another part of our priority is adding protection for children while using the internet. JME Ads does not knowingly collect any Personal Identifiable Information from children under the age of 13. If you think that your child provided this kind of information on our website, we strongly encourage you to contact us immediately and we will do our best efforts to promptly remove such information from our records.
+            Every user is entitled to data access, rectification, erasure, restriction of processing, objection to processing, and data portability. To exercise any of these statutory rights, please reach out via our official portal.
           </p>
         </section>
 
         <section className="space-y-1.5">
           <h2 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>7. Consent</span>
+            <span>7. Children's Information</span>
           </h2>
           <p>
-            By using our website or registering an account, you hereby consent to our Privacy Policy and agree to its terms and conditions.
+            Another part of our priority is adding protection for children while using the internet. We encourage parents and guardians to observe, participate in, and/or monitor and guide their online activity. JME Ads does not knowingly collect any Personal Identifiable Information from children under the age of 13.
           </p>
         </section>
       </div>
@@ -142,58 +144,54 @@ export const PrivacyPolicyPage: React.FC = () => {
   );
 };
 
-// 2. Terms & Conditions Page (Google AdSense Compliant English)
+// 2. Terms & Conditions Page (English)
 export const TermsPage: React.FC = () => {
   return (
     <div className="pb-28 space-y-4 font-english">
       <PolicyHeader 
         title="Terms & Conditions" 
-        subtitle="Rules and regulations for using JME Ads services" 
+        subtitle="User agreement, anti-fraud rules, and service guidelines" 
         icon={<FileText className="w-6 h-6 text-emerald-200" />} 
       />
 
       <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-xs space-y-4 text-xs text-gray-700 leading-relaxed">
-        <p className="text-[11px] text-gray-400">
-          Last Updated: September 2026
-        </p>
-
         <section className="space-y-1.5">
           <h2 className="font-bold text-sm text-gray-900">1. Acceptance of Terms</h2>
           <p>
-            By accessing or using JME Ads ("the Service"), you agree to be bound by these Terms and Conditions and our Privacy Policy. If you disagree with any part of the terms, you must discontinue using our services immediately.
+            By accessing and using JME Ads, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions. If you do not agree with any part of these terms, you must discontinue using our services immediately.
           </p>
         </section>
 
         <section className="space-y-1.5">
-          <h2 className="font-bold text-sm text-gray-900">2. Account Registration & Single-Account Policy</h2>
+          <h2 className="font-bold text-sm text-gray-900">2. Account Eligibility & One-Account Policy</h2>
           <p>
-            To use our services, you must register a genuine user account with accurate and verifiable details. Each individual is strictly permitted to hold only <strong>one account</strong>. Creating multiple accounts, utilizing Virtual Private Networks (VPN), proxies, emulator software, or automated scripts/bots is strictly prohibited and will result in permanent account suspension without prior notice.
+            Users must provide authentic and verifiable contact information. Each individual user is permitted to maintain only legitimate accounts up to the system allowance. Automated registration, disposable phone numbers, or creating abusive clone accounts will result in immediate termination and forfeiture of all accumulated balances.
           </p>
         </section>
 
         <section className="space-y-1.5">
-          <h2 className="font-bold text-sm text-gray-900">3. Task Verification & Proof Submissions</h2>
+          <h2 className="font-bold text-sm text-gray-900">3. Task Verification & Anti-Fraud Policy</h2>
           <p>
-            Users earn rewards by completing genuine micro-tasks, viewing promotional content, and engaging with partner materials. For micro-jobs requiring proof:
+            To maintain high advertising quality for our brand partners:
           </p>
           <ul className="list-disc pl-5 space-y-1 text-gray-600">
-            <li>You must adhere to the mandatory duration timer (e.g. 15s for smartlinks, 60-180s for remote video jobs).</li>
+            <li>Users must genuinely view advertisements for the full required duration (typically 15 to 60 seconds).</li>
+            <li>The use of automated bots, autoclickers, proxy networks, VPNs, or headless browsers is strictly prohibited.</li>
             <li>Submitting falsified screenshots, duplicated images, or returning before timer expiration constitutes fraudulent activity and will lead to task rejection and potential account penalty.</li>
-            <li>All submitted proofs are subject to administrative review.</li>
           </ul>
         </section>
 
         <section className="space-y-1.5">
           <h2 className="font-bold text-sm text-gray-900">4. Payouts and Withdrawals</h2>
           <p>
-            Withdrawal requests are processed according to the minimum withdrawal threshold established by the platform (minimum ৳1,000). Users must ensure they provide accurate payment information (bKash, Nagad, Rocket). JME Ads is not liable for funds transferred to incorrectly provided account numbers.
+            Withdrawal requests are processed subject to account verification. Users must reach the minimum required threshold and maintain good standing. We reserve the right to audit suspicious withdrawal activity before releasing funds.
           </p>
         </section>
 
         <section className="space-y-1.5">
-          <h2 className="font-bold text-sm text-gray-900">5. Limitation of Liability</h2>
+          <h2 className="font-bold text-sm text-gray-900">5. Intellectual Property</h2>
           <p>
-            JME Ads and its team shall not be held liable for any indirect, incidental, special, or consequential damages resulting from the use or inability to use our services, server maintenance, or network interruptions.
+            All content, UI elements, brand assets, software scripts, and trademarks displayed on JME Ads are the proprietary property of JME Ads or licensed partners. Unauthorized reproduction or scraping is strictly prohibited.
           </p>
         </section>
 
@@ -208,7 +206,88 @@ export const TermsPage: React.FC = () => {
   );
 };
 
-// 3. About Us Page (English)
+// 3. Disclaimer & Earnings Disclosure (AdSense & FTC Compliant)
+export const DisclaimerPage: React.FC = () => {
+  return (
+    <div className="pb-28 space-y-4 font-english">
+      <PolicyHeader 
+        title="Disclaimer & Earnings Disclosure" 
+        subtitle="Transparent operational policies and reward disclosures" 
+        icon={<AlertTriangle className="w-6 h-6 text-emerald-200" />} 
+      />
+
+      <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-xs space-y-4 text-xs text-gray-700 leading-relaxed">
+        <section className="space-y-1.5">
+          <h2 className="font-bold text-sm text-gray-900">1. No Earnings Guarantees</h2>
+          <p>
+            JME Ads is an online digital engagement and micro-task intermediation platform. Any references to potential earnings, task rewards, or referral bonuses represent potential reward credits for completed verified user actions. We do not make any guarantees regarding income, financial return, or regular employment. Individual earnings depend entirely on the availability of advertising campaigns, task quotas, user diligence, and strict compliance with our quality rules.
+          </p>
+        </section>
+
+        <section className="space-y-1.5">
+          <h2 className="font-bold text-sm text-gray-900">2. Third-Party Advertisements & External Links</h2>
+          <p>
+            Our service contains links to third-party websites, video hosting platforms (such as YouTube), and advertiser landing pages. JME Ads does not endorse, guarantee, or assume responsibility for the accuracy, legality, or quality of products, services, or claims advertised on third-party sites. Users visit external links at their own discretion.
+          </p>
+        </section>
+
+        <section className="space-y-1.5">
+          <h2 className="font-bold text-sm text-gray-900">3. Non-Affiliation Notice</h2>
+          <p>
+            All product names, logos, brands, and registered trademarks of third-party platforms (including YouTube, Google, bKash, and Nagad) are property of their respective owners. Their mention does not imply endorsement, affiliation, or sponsorship.
+          </p>
+        </section>
+
+        <section className="space-y-1.5">
+          <h2 className="font-bold text-sm text-gray-900">4. User Discretion & Tax Obligations</h2>
+          <p>
+            Users are solely responsible for complying with local tax obligations or reporting requirements in their jurisdiction arising from any rewards or payments received through JME Ads.
+          </p>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+// 4. Cookie Policy Page (AdSense Compliant)
+export const CookiePolicyPage: React.FC = () => {
+  return (
+    <div className="pb-28 space-y-4 font-english">
+      <PolicyHeader 
+        title="Cookie Policy" 
+        subtitle="How we use cookies and tracking technologies" 
+        icon={<Cookie className="w-6 h-6 text-emerald-200" />} 
+      />
+
+      <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-xs space-y-4 text-xs text-gray-700 leading-relaxed">
+        <section className="space-y-1.5">
+          <h2 className="font-bold text-sm text-gray-900">1. What Are Cookies?</h2>
+          <p>
+            Cookies are small text files placed on your computer or mobile device when you browse websites. They are widely used to make websites work properly, improve user efficiency, and provide analytical reporting information to website operators.
+          </p>
+        </section>
+
+        <section className="space-y-1.5">
+          <h2 className="font-bold text-sm text-gray-900">2. Types of Cookies We Use</h2>
+          <ul className="list-disc pl-5 space-y-1.5 text-gray-600">
+            <li><strong>Essential & Functional Cookies:</strong> Necessary to keep you signed in, remember your user preferences, and securely track timer state during task completion.</li>
+            <li><strong>Analytical Cookies:</strong> Help us understand how visitors interact with our pages, identify device compatibility issues, and enhance web application performance.</li>
+            <li><strong>Advertising & Targeting Cookies:</strong> Used by third-party advertising partners including Google AdSense to serve relevant ads and measure ad campaign efficacy.</li>
+          </ul>
+        </section>
+
+        <section className="space-y-1.5">
+          <h2 className="font-bold text-sm text-gray-900">3. Managing and Opting Out of Cookies</h2>
+          <p>
+            Most modern web browsers allow you to control cookies through their browser settings. You can configure your browser to reject cookies or notify you when a cookie is placed. Additionally, to opt out of Google’s personalized ad cookies, visit Google Ad Settings (<span className="text-emerald-700 font-semibold underline">https://adssettings.google.com</span>) or the Digital Advertising Alliance Consumer Choice tool.
+          </p>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+// 5. About Us Page (English)
 export const AboutUsPage: React.FC = () => {
   return (
     <div className="pb-28 space-y-4 font-english">
@@ -258,7 +337,67 @@ export const AboutUsPage: React.FC = () => {
   );
 };
 
-// 4. Contact Us Page (Direct Message To Admin Panel - No Phone or Email Displayed)
+// 6. Educational Guide & Learning Center (High Value Content for AdSense Approval)
+export const PublisherGuidePage: React.FC = () => {
+  return (
+    <div className="pb-28 space-y-4">
+      <PolicyHeader 
+        title="Publisher & Earning Guide" 
+        subtitle="ডিজিটাল বিজ্ঞাপন, অনলাইন আর্নিং ও নিরাপত্তা নির্দেশিকা" 
+        icon={<BookOpen className="w-6 h-6 text-emerald-200" />} 
+      />
+
+      <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-xs space-y-4 text-xs text-gray-700 leading-relaxed">
+        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-1">
+          <span className="font-extrabold text-xs flex items-center gap-1.5 text-emerald-800">
+            <Award className="w-4 h-4 text-emerald-600" />
+            <span>এডুকেশনাল ও নলেজ সেন্টার</span>
+          </span>
+          <p className="text-[11px] leading-relaxed">
+            গুগল অ্যাডসেন্স এবং বিশ্বমানের অ্যাড নেটওয়ার্কের নিয়মানুযায়ী এখানে জেনে নিন কীভাবে ডিজিটাল মিডিয়া কাজ করে এবং প্রতারণা এড়িয়ে নিরাপদে আয় করা যায়।
+          </p>
+        </div>
+
+        <section className="space-y-1.5">
+          <h2 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
+            <Globe className="w-4 h-4 text-emerald-600" />
+            <span>১. ডিজিটাল বিজ্ঞাপন মডেল কী? (CPM, CPC, CPA)</span>
+          </h2>
+          <p>
+            অনলাইন জগতে বিভিন্ন বিজ্ঞাপন মডেল রয়েছে:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-gray-600">
+            <li><strong>CPM (Cost Per Mille):</strong> প্রতি ১,০০০ বিজ্ঞাপনের প্রদর্শনী বা ভিউ এর উপর নির্ধারিত রেট।</li>
+            <li><strong>CPC (Cost Per Click):</strong> বিজ্ঞাপনে জেনুইন ভিজিটরের ক্লিক প্রতি নির্ধারিত আয়।</li>
+            <li><strong>CPA (Cost Per Action):</strong> বিজ্ঞাপন থেকে অ্যাপ ইনস্টল, সাইনআপ বা কোনো টাস্ক সম্পন্ন করার ভিত্তিতে আয়।</li>
+          </ul>
+        </section>
+
+        <section className="space-y-1.5">
+          <h2 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>২. ইনভ্যালিড ক্লিক ও ট্র্যাফিক প্রতিরোধ কেন জরুরি?</span>
+          </h2>
+          <p>
+            অ্যাডসেন্স এবং শীর্ষস্থানীয় অ্যাড কোম্পানিগুলো স্বয়ংক্রিয় রোবট বা ভুয়া ক্লিক কঠোরভাবে নিষিদ্ধ করে। বিজ্ঞাপনদাতারা প্রকৃত গ্রাহক চান। তাই ১৫ সেকেন্ড মনোযোগ দিয়ে বিজ্ঞাপন দেখা এবং কোনো অটো-ক্লিকার ব্যবহার না করাই প্ল্যাটফর্মের দীর্ঘমেয়াদি স্থায়িত্ব নিশ্চিত করে।
+          </p>
+        </section>
+
+        <section className="space-y-1.5">
+          <h2 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>৩. সাইবার নিরাপত্তা ও নিরাপদ ইন্টারনেট ব্রাউজিং</span>
+          </h2>
+          <p>
+            অনলাইনে কাজ করার সময় সবসময় ব্যক্তিগত পাসওয়ার্ড নিরাপদ রাখুন। কখনো কাউকে আপনার পিন বা ওটিপি দেবেন না। JME Ads কখনোই আপনার বিকাশ/নগদ পিন নম্বর চাইবে না।
+          </p>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+// 7. Contact Us Page (Direct Message To Admin Panel - No Phone or Email Displayed)
 export const ContactUsPage: React.FC = () => {
   const { submitContactMessage, showToast } = useApp();
   const [name, setName] = useState('');

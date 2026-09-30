@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { MicroJobItem } from '../types';
+import { MicroJobItem, AIAnalyticsReport } from '../types';
+import { compressImage } from '../utils/imageCompressor';
+import { analyzeJobProof } from '../utils/aiVerification';
 import { 
   ArrowLeft, 
   Play, 
@@ -14,7 +16,9 @@ import {
   Sparkles, 
   Check, 
   Bot,
-  Zap
+  Zap,
+  Activity,
+  FileCheck
 } from 'lucide-react';
 
 export const RemoteJobDetailsPage: React.FC<{ 
@@ -26,10 +30,14 @@ export const RemoteJobDetailsPage: React.FC<{
   const [sessionStarted, setSessionStarted] = useState(false);
   const [secondsSpent, setSecondsSpent] = useState(0);
   const [startScreenshot, setStartScreenshot] = useState<string | null>(null);
+  const [startSizeKb, setStartSizeKb] = useState<number>(0);
   const [endScreenshot, setEndScreenshot] = useState<string | null>(null);
+  const [endSizeKb, setEndSizeKb] = useState<number>(0);
   const [proofNote, setProofNote] = useState('');
+  const [isCompressing, setIsCompressing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedAiReport, setSubmittedAiReport] = useState<AIAnalyticsReport | null>(null);
 
   const isVerified = user?.isVerifiedPublisher;
   const rewardAmount = isVerified ? (job.reward * 2) : job.reward;
@@ -56,31 +64,33 @@ export const RemoteJobDetailsPage: React.FC<{
     }
   };
 
-  // Convert File to Base64 for Preview and Firestore Storage
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'start' | 'end') => {
+  // Convert & Compress File to under 100KB using HTML5 Canvas
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'start' | 'end') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('স্ক্রিনশটের সাইজ সর্বোচ্চ ২ মেগাবাইট হতে হবে', 'warning');
-      return;
-    }
+    setIsCompressing(true);
+    try {
+      showToast('ছবি ১০০ কেবির নিচে কম্প্রেস করা হচ্ছে...', 'info');
+      const compressed = await compressImage(file, 100);
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
       if (type === 'start') {
-        setStartScreenshot(result);
-        showToast('শুরুর স্ক্রিনশট আপলোড সম্পন্ন!', 'success');
+        setStartScreenshot(compressed.dataUrl);
+        setStartSizeKb(compressed.sizeKb);
+        showToast(`✓ শুরুর স্ক্রিনশট রেডি (${compressed.sizeKb} KB - ১০০ কেবির নিচে)!`, 'success');
       } else {
-        setEndScreenshot(result);
-        showToast('শেষের স্ক্রিনশট আপলোড সম্পন্ন!', 'success');
+        setEndScreenshot(compressed.dataUrl);
+        setEndSizeKb(compressed.sizeKb);
+        showToast(`✓ শেষের স্ক্রিনশট রেডি (${compressed.sizeKb} KB - ১০০ কেবির নিচে)!`, 'success');
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      showToast('ছবি প্রসেস করতে ব্যর্থ হয়েছে: ' + err.message, 'error');
+    } finally {
+      setIsCompressing(false);
+    }
   };
 
-  // Submit Proof to Robot Engine & Admin Panel
+  // Submit Proof with AI Analytics to Admin Panel
   const handleSubmitProof = async () => {
     if (!sessionStarted) {
       showToast('প্রথমে "কাজ শুরু করুন" বাটনে ক্লিক করুন', 'warning');
@@ -99,6 +109,19 @@ export const RemoteJobDetailsPage: React.FC<{
 
     setIsSubmitting(true);
     try {
+      // Run Automated AI Analytics Engine
+      const aiReport = await analyzeJobProof({
+        requiredSeconds,
+        spentSeconds: secondsSpent,
+        startScreenshotUrl: startScreenshot,
+        endScreenshotUrl: endScreenshot,
+        startSizeKb,
+        endSizeKb,
+        proofText: proofNote.trim()
+      });
+
+      setSubmittedAiReport(aiReport);
+
       const res = await submitJobProof({
         jobId: job.id,
         jobTitle: job.title,
@@ -107,12 +130,13 @@ export const RemoteJobDetailsPage: React.FC<{
         requiredSeconds,
         spentSeconds: secondsSpent,
         proofText: proofNote.trim(),
-        reward: rewardAmount
+        reward: rewardAmount,
+        aiAnalytics: aiReport
       });
 
       if (res.success) {
         setIsSubmitted(true);
-        showToast('🎉 প্রমাণ সফলভাবে জমা হয়েছে! অ্যাডমিন প্যানেল ভেরিফাই করে ব্যালেন্স যুক্ত করবে।', 'success');
+        showToast(`🎉 এআই যাচাইকরণ সম্পন্ন (${aiReport.confidenceScore}% স্কোর)! প্রমাণ অ্যাডমিন প্যানেলে জমা হয়েছে।`, 'success');
       } else {
         showToast(res.message || 'সাবমিশন ব্যর্থ হয়েছে', 'error');
       }
@@ -233,43 +257,102 @@ export const RemoteJobDetailsPage: React.FC<{
 
       {/* Proof Submission & Dual Screenshot Upload */}
       {isSubmitted ? (
-        <div className="bg-white p-6 rounded-3xl border border-emerald-200 shadow-md text-center space-y-3">
-          <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-2xl">
-            <CheckCircle2 className="w-8 h-8" />
+        <div className="bg-white p-6 rounded-3xl border border-emerald-200 shadow-md text-center space-y-4 animate-in fade-in">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-2xl shadow-inner">
+            <CheckCircle2 className="w-9 h-9" />
           </div>
-          <h3 className="font-extrabold text-base text-gray-900">কাজের প্রমাণ সফলভাবে গৃহীত হয়েছে!</h3>
+          
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full inline-block mb-1.5 font-english">
+              AI ANALYTICS VERIFIED ✓
+            </span>
+            <h3 className="font-extrabold text-base text-gray-950">কাজের প্রমাণ সফলভাবে গৃহীত হয়েছে!</h3>
+          </div>
+
+          {/* AI Analytics Verification Card */}
+          {submittedAiReport && (
+            <div className="p-3.5 rounded-2xl bg-slate-900 text-left text-white border border-slate-700 shadow-xs space-y-2">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <div className="flex items-center gap-1.5">
+                  <Bot className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-bold text-emerald-300">এআই অ্যানালিটিক্স রিপোর্ট</span>
+                </div>
+                <span className="text-xs font-black font-english text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                  স্কোর: {submittedAiReport.confidenceScore}%
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-300 leading-snug">
+                {submittedAiReport.summary}
+              </p>
+
+              <div className="space-y-1 pt-1 text-[10px] text-slate-400">
+                {submittedAiReport.details.map((d, idx) => (
+                  <div key={idx} className="flex items-start gap-1.5">
+                    <span className="text-emerald-400">▪</span>
+                    <span>{d}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <p className="text-xs text-gray-600 leading-relaxed">
-            আপনার সাবমিশন অ্যাডমিন প্যানেলে রিভিউ তালিকায় পাঠানো হয়েছে। অ্যাডমিন ভেরিফাই করা মাত্রই আপনার একাউন্টে <strong>৳{rewardAmount.toFixed(2)}</strong> যুক্ত হয়ে যাবে।
+            আপনার সাবমিশন ও এআই রিপোর্ট সরাসরি <strong>অ্যাডমিন প্যানেলে</strong> পাঠানো হয়েছে। অ্যাডমিন ভেরিফাই করা মাত্রই আপনার একাউন্টে <strong>৳{rewardAmount.toFixed(2)}</strong> যুক্ত হয়ে যাবে।
           </p>
+
           <button
             onClick={onBack}
-            className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer"
+            className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 cursor-pointer active:scale-95 transition-all"
           >
             অন্যান্য অফারে ফিরে যান
           </button>
         </div>
       ) : (
         <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-xs space-y-3.5">
-          <h3 className="font-extrabold text-xs text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
-            <Camera className="w-4 h-4 text-emerald-600" />
-            <span>কাজের স্ক্রিনশট প্রমাণ আপলোড (বাধ্যতামূলক)</span>
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-xs text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Camera className="w-4 h-4 text-emerald-600" />
+              <span>কাজের স্ক্রিনশট প্রমাণ (১০০ কেবির নিচে অটো-কম্প্রেসড)</span>
+            </h3>
+            <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              অটো-কম্প্রেসড &lt;100KB
+            </span>
+          </div>
 
           <div className="grid grid-cols-2 gap-2.5">
             {/* 1. Start Screenshot */}
             <div className="border-2 border-dashed border-gray-200 rounded-2xl p-2.5 text-center bg-gray-50/50 hover:bg-emerald-50/30 transition-all relative">
-              <span className="text-[10px] font-bold text-gray-700 block mb-1.5">১. শুরুর স্ক্রিনশট</span>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold text-gray-700">১. শুরুর স্ক্রিনশট</span>
+                {startSizeKb > 0 && (
+                  <span className="text-[9px] font-bold text-emerald-600 font-english bg-emerald-100 px-1 rounded">
+                    {startSizeKb} KB
+                  </span>
+                )}
+              </div>
+
               {startScreenshot ? (
                 <div className="relative">
                   <img src={startScreenshot} alt="Start proof" className="w-full h-24 object-cover rounded-xl border border-emerald-300" />
-                  <span className="absolute top-1 right-1 bg-emerald-600 text-white p-1 rounded-full text-[9px]">
+                  <span className="absolute top-1 right-1 bg-emerald-600 text-white p-1 rounded-full text-[9px] shadow-xs">
                     <Check className="w-3 h-3" />
                   </span>
+                  <label className="block text-[10px] text-emerald-700 font-bold mt-1 cursor-pointer hover:underline">
+                    পরিবর্তন করুন
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => handleFileUpload(e, 'start')} 
+                      className="hidden" 
+                    />
+                  </label>
                 </div>
               ) : (
                 <label className="flex flex-col items-center justify-center py-4 cursor-pointer">
                   <Upload className="w-6 h-6 text-gray-400 mb-1" />
                   <span className="text-[10px] font-bold text-emerald-700">ছবি সিলেক্ট করুন</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">অটো কম্প্রেস হবে</span>
                   <input 
                     type="file" 
                     accept="image/*" 
@@ -282,18 +365,36 @@ export const RemoteJobDetailsPage: React.FC<{
 
             {/* 2. End Screenshot */}
             <div className="border-2 border-dashed border-gray-200 rounded-2xl p-2.5 text-center bg-gray-50/50 hover:bg-emerald-50/30 transition-all relative">
-              <span className="text-[10px] font-bold text-gray-700 block mb-1.5">২. শেষের স্ক্রিনশট</span>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold text-gray-700">২. শেষের স্ক্রিনশট</span>
+                {endSizeKb > 0 && (
+                  <span className="text-[9px] font-bold text-emerald-600 font-english bg-emerald-100 px-1 rounded">
+                    {endSizeKb} KB
+                  </span>
+                )}
+              </div>
+
               {endScreenshot ? (
                 <div className="relative">
                   <img src={endScreenshot} alt="End proof" className="w-full h-24 object-cover rounded-xl border border-emerald-300" />
-                  <span className="absolute top-1 right-1 bg-emerald-600 text-white p-1 rounded-full text-[9px]">
+                  <span className="absolute top-1 right-1 bg-emerald-600 text-white p-1 rounded-full text-[9px] shadow-xs">
                     <Check className="w-3 h-3" />
                   </span>
+                  <label className="block text-[10px] text-emerald-700 font-bold mt-1 cursor-pointer hover:underline">
+                    পরিবর্তন করুন
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => handleFileUpload(e, 'end')} 
+                      className="hidden" 
+                    />
+                  </label>
                 </div>
               ) : (
                 <label className="flex flex-col items-center justify-center py-4 cursor-pointer">
                   <Upload className="w-6 h-6 text-gray-400 mb-1" />
                   <span className="text-[10px] font-bold text-emerald-700">ছবি সিলেক্ট করুন</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">অটো কম্প্রেস হবে</span>
                   <input 
                     type="file" 
                     accept="image/*" 
@@ -313,25 +414,29 @@ export const RemoteJobDetailsPage: React.FC<{
               value={proofNote} 
               onChange={(e) => setProofNote(e.target.value)} 
               placeholder="ইউটিউব ইউজারনেম বা চ্যানেলের নাম লিখুন" 
-              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs" 
+              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-emerald-500" 
             />
           </div>
 
           {/* Submit Button */}
           <button
             onClick={handleSubmitProof}
-            disabled={isSubmitting || !isTimeComplete}
+            disabled={isSubmitting || !isTimeComplete || isCompressing}
             className={`w-full py-3.5 rounded-2xl font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 ${
-              isTimeComplete 
+              isTimeComplete && !isCompressing
                 ? 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-emerald-600/30 cursor-pointer active:scale-95' 
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
             <span>
-              {isSubmitting ? 'রোবট ভেরিফিকেশন ও সাবমিট হচ্ছে...' : (
-                isTimeComplete ? `প্রমাণ সাবমিট করুন (রিওয়ার্ড ৳${rewardAmount.toFixed(2)})` : `টাইমার বাকি আছে (${requiredSeconds - secondsSpent}s)`
-              )}
+              {isCompressing 
+                ? 'ছবি কম্প্রেশন চলছে...' 
+                : isSubmitting 
+                ? 'এআই অ্যানালিটিক্স যাচাই ও সাবমিট হচ্ছে...' 
+                : isTimeComplete 
+                ? `এআই ভেরিফিকেশন ও সাবমিট করুন (রিওয়ার্ড ৳${rewardAmount.toFixed(2)})` 
+                : `টাইমার বাকি আছে (${requiredSeconds - secondsSpent}s)`}
             </span>
           </button>
         </div>

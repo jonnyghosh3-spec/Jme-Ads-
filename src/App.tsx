@@ -22,7 +22,15 @@ import { MicroJobsPage } from './pages/MicroJobsPage';
 import { RemoteJobDetailsPage } from './pages/RemoteJobDetailsPage';
 import { MicroJobModal } from './components/MicroJobModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
-import { PrivacyPolicyPage, TermsPage, AboutUsPage, ContactUsPage } from './pages/PolicyPages';
+import { 
+  PrivacyPolicyPage, 
+  TermsPage, 
+  AboutUsPage, 
+  ContactUsPage,
+  DisclaimerPage,
+  CookiePolicyPage,
+  PublisherGuidePage
+} from './pages/PolicyPages';
 import { AccountVerificationBanner } from './components/AccountVerificationBanner';
 
 import { CheckCircle2, AlertCircle, Info, X, Bell } from 'lucide-react';
@@ -66,6 +74,25 @@ const MainApp: React.FC = () => {
     }
   }, []);
 
+  // AdSense Integration - Inject verification script into head if enabled
+  useEffect(() => {
+    if (settings.enableAdSense && settings.googleAdSenseCode) {
+      const existing = document.getElementById('adsense-custom-script');
+      if (!existing) {
+        const container = document.createElement('div');
+        container.id = 'adsense-custom-script';
+        container.innerHTML = settings.googleAdSenseCode;
+        const script = container.querySelector('script');
+        if (script) {
+          const s = document.createElement('script');
+          Array.from(script.attributes).forEach(attr => s.setAttribute(attr.name, attr.value));
+          s.innerHTML = script.innerHTML;
+          document.head.appendChild(s);
+        }
+      }
+    }
+  }, [settings.enableAdSense, settings.googleAdSenseCode]);
+
   return (
     <>
       {!user ? (
@@ -101,23 +128,32 @@ const MainApp: React.FC = () => {
                 {activeTab === 'microjobs' && <MicroJobsPage />}
                 {activeTab === 'privacy' && <PrivacyPolicyPage />}
                 {activeTab === 'terms' && <TermsPage />}
+                {activeTab === 'disclaimer' && <DisclaimerPage />}
+                {activeTab === 'cookies' && <CookiePolicyPage />}
+                {activeTab === 'guide' && <PublisherGuidePage />}
                 {activeTab === 'about' && <AboutUsPage />}
                 {activeTab === 'contact' && <ContactUsPage />}
               </>
             )}
 
             {/* Google AdSense Compliant Footer */}
-            <footer className="py-4 text-center border-t border-gray-200/60 text-[10px] text-gray-500 space-y-1.5 pb-24">
-              <div className="flex items-center justify-center gap-2.5 font-bold flex-wrap text-emerald-800">
+            <footer className="py-5 text-center border-t border-gray-200/60 text-[10px] text-gray-500 space-y-2 pb-24">
+              <div className="flex items-center justify-center gap-2 font-bold flex-wrap text-emerald-800">
                 <button onClick={() => { setSelectedJobForDetails(null); setActiveTab('privacy'); }} className="hover:underline cursor-pointer">Privacy Policy</button>
                 <span>•</span>
                 <button onClick={() => { setSelectedJobForDetails(null); setActiveTab('terms'); }} className="hover:underline cursor-pointer">Terms & Conditions</button>
+                <span>•</span>
+                <button onClick={() => { setSelectedJobForDetails(null); setActiveTab('disclaimer'); }} className="hover:underline cursor-pointer">Disclaimer</button>
+                <span>•</span>
+                <button onClick={() => { setSelectedJobForDetails(null); setActiveTab('cookies'); }} className="hover:underline cursor-pointer">Cookie Policy</button>
+                <span>•</span>
+                <button onClick={() => { setSelectedJobForDetails(null); setActiveTab('guide'); }} className="hover:underline cursor-pointer text-emerald-600">Publisher Guide</button>
                 <span>•</span>
                 <button onClick={() => { setSelectedJobForDetails(null); setActiveTab('about'); }} className="hover:underline cursor-pointer">About Us</button>
                 <span>•</span>
                 <button onClick={() => { setSelectedJobForDetails(null); setActiveTab('contact'); }} className="hover:underline cursor-pointer">Contact Us</button>
               </div>
-              <p className="text-[9px] text-gray-400">© 2026 JME Ads Network. All Rights Reserved. Google AdSense Verified.</p>
+              <p className="text-[10px] text-gray-400">© 2026 JME Ads Network. All Rights Reserved. Google AdSense & Publisher Policy Compliant.</p>
             </footer>
           </main>
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { compressImage } from '../utils/imageCompressor';
 import { 
   User, 
   Copy, 
@@ -20,19 +21,44 @@ import {
   Phone,
   Mail,
   Calendar,
-  Shield
+  Shield,
+  Camera,
+  Upload,
+  Check
 } from 'lucide-react';
 
 export const AccountPage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSupport }) => {
-  const { user, logout, setActiveTab, showToast, setShowAdminModal } = useApp();
+  const { user, logout, setActiveTab, showToast, setShowAdminModal, updateUserAvatar } = useApp();
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(user?.name || '');
   const [editPhone, setEditPhone] = useState(user?.phone || '');
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   const copyRefCode = () => {
     if (!user) return;
     navigator.clipboard.writeText(user.referralCode);
     showToast(`রেফারেল কোড "${user.referralCode}" কপি হয়েছে!`, 'success');
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingLogo(true);
+    try {
+      showToast('ছবি ১০০ কেবির নিচে কম্প্রেস করা হচ্ছে...', 'info');
+      const compressed = await compressImage(file, 100, 500);
+      const success = await updateUserAvatar(compressed.dataUrl);
+      if (success) {
+        showToast(`🎉 লোগো সেট সম্পন্ন হয়েছে (${compressed.sizeKb} KB - ১০০ কেবির নিচে)!`, 'success');
+      } else {
+        showToast('লোগো সংরক্ষণ করতে সমস্যা হয়েছে', 'error');
+      }
+    } catch (err: any) {
+      showToast('ছবি প্রসেস এরর: ' + err.message, 'error');
+    } finally {
+      setIsUploadingLogo(false);
+    }
   };
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -52,13 +78,46 @@ export const AccountPage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSup
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-20 bg-emerald-100/50 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative z-10">
-          <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-emerald-600 to-green-500 text-white flex items-center justify-center text-3xl font-bold shadow-md shadow-emerald-600/30 mb-2 border-2 border-white">
-            {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+          {/* Avatar with Camera upload button */}
+          <div className="relative w-22 h-22 mx-auto mb-2 group">
+            <div className="w-full h-full rounded-3xl bg-gradient-to-tr from-emerald-600 to-green-500 text-white flex items-center justify-center text-3xl font-black shadow-md shadow-emerald-600/30 border-2 border-white overflow-hidden">
+              {user?.photoURL ? (
+                <img 
+                  src={user.photoURL} 
+                  alt={user.name || 'User logo'} 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span>{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</span>
+              )}
+            </div>
+
+            {/* Camera Edit Badge */}
+            <label 
+              title="নিজের লোগো / ছবি আপলোড করুন (<100KB)"
+              className="absolute -bottom-1 -right-1 p-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md cursor-pointer border-2 border-white active:scale-95 transition-all flex items-center justify-center"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleAvatarUpload} 
+                disabled={isUploadingLogo}
+                className="hidden" 
+              />
+            </label>
           </div>
 
-          <h2 className="text-lg font-black text-emerald-950">
-            {user ? user.name : 'ব্যবহারকারী'}
-          </h2>
+          <div className="flex items-center justify-center gap-1.5">
+            <h2 className="text-lg font-black text-emerald-950">
+              {user ? user.name : 'ব্যবহারকারী'}
+            </h2>
+            {user?.isVerifiedPublisher && (
+              <span className="p-0.5 rounded-full bg-sky-500 text-white" title="ভেরিফাইড পাবলিশার">
+                <Check className="w-3 h-3 stroke-[3]" />
+              </span>
+            )}
+          </div>
 
           <div className="flex items-center justify-center gap-1.5 mt-0.5 text-xs text-gray-500">
             <span className="font-english text-[11px]">UID: {user?.uid.slice(0, 10)}</span>
@@ -354,6 +413,32 @@ export const AccountPage: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSup
                   onChange={e => setEditPhone(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">প্রোফাইল ছবি / লোগো (সর্বোচ্চ ১০০ KB)</label>
+                <div className="flex items-center gap-3 p-2.5 rounded-xl border border-gray-200 bg-gray-50/50">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg overflow-hidden border shrink-0">
+                    {user?.photoURL ? (
+                      <img src={user.photoURL} alt="Logo" className="w-full h-full object-cover" />
+                    ) : (
+                      <span>{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs cursor-pointer hover:bg-emerald-700 active:scale-95 transition-all">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{user?.photoURL ? 'লোগো পরিবর্তন করুন' : 'লোগো আপলোড করুন'}</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleAvatarUpload} 
+                        className="hidden" 
+                      />
+                    </label>
+                    <p className="text-[10px] text-gray-500 mt-1">অটো কম্প্রেস হবে (১০০ কেবির নিচে)</p>
+                  </div>
+                </div>
               </div>
 
               <div className="pt-2">

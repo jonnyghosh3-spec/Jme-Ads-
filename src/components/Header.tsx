@@ -63,15 +63,14 @@ export const Header: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSupport 
             {/* Install PWA Button */}
             <PWAInstallButton variant="compact" />
 
-            {/* Admin Panel Button - ONLY visible to master admin account jonnykumar72iw@gmail.com */}
+            {/* Admin Panel Button - Small circular icon button for master admin */}
             {user?.email?.toLowerCase() === 'jonnykumar72iw@gmail.com' && (
               <button
                 onClick={() => setShowAdminModal(true)}
-                className="p-1.5 px-2.5 rounded-xl text-emerald-950 bg-emerald-100 hover:bg-emerald-200 active:scale-95 transition-all flex items-center gap-1 border border-emerald-400 shadow-xs cursor-pointer animate-pulse"
-                title="মাস্টার অ্যাডমিন প্যানেল"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-900 border border-emerald-400 text-emerald-400 hover:bg-slate-800 active:scale-90 transition-all flex items-center justify-center shadow-xs cursor-pointer shrink-0"
+                title="মাস্টার অ্যাডমিন কন্ট্রোল"
               >
-                <Shield className="w-4 h-4 text-emerald-800" />
-                <span className="text-[10px] font-black text-emerald-950">এডমিন</span>
+                <Shield className="w-4 h-4 text-emerald-400" />
               </button>
             )}
 

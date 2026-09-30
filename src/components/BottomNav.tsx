@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 export const BottomNav: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSupport }) => {
-  const { activeTab, setActiveTab } = useApp();
+  const { user, activeTab, setActiveTab } = useApp();
 
   return (
     <>
@@ -95,8 +95,12 @@ export const BottomNav: React.FC<{ onOpenSupport: () => void }> = ({ onOpenSuppo
               activeTab === 'account' ? 'text-emerald-700 font-bold scale-105' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
-            <div className={`p-1 rounded-xl ${activeTab === 'account' ? 'bg-emerald-50' : ''}`}>
-              <User className="w-5 h-5" />
+            <div className={`p-0.5 rounded-xl flex items-center justify-center ${activeTab === 'account' ? 'bg-emerald-50' : ''}`}>
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="Me" className="w-5 h-5 rounded-full object-cover border border-emerald-500" />
+              ) : (
+                <User className="w-5 h-5" />
+              )}
             </div>
             <span className="text-[11px] mt-0.5 tracking-tight">একাউন্ট</span>
           </button>

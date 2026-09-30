@@ -59,8 +59,9 @@ export const AccountVerificationBanner: React.FC = () => {
   }
 
   const upgradeFee = settings.publisherUpgradeFee || 30;
-  const bkashNumber = settings.publisherUpgradeBkash || '01700000000';
-  const nagadNumber = settings.publisherUpgradeNagad || '01800000000';
+  const bkashNumber = settings.publisherUpgradeBkash || '01722169178';
+  const isNagadActive = settings.isNagadActive === true;
+  const nagadNumber = settings.publisherUpgradeNagad || 'আপাতত বন্ধ / পেন্ডিং';
 
   const copyNumber = (num: string) => {
     navigator.clipboard.writeText(num);
@@ -177,38 +178,49 @@ export const AccountVerificationBanner: React.FC = () => {
                 <span className="font-black text-emerald-700 text-base font-english">৳{upgradeFee}</span>
               </div>
 
-              <div className="space-y-1.5 pt-1 border-t border-gray-200">
-                <div className="flex items-center justify-between bg-white p-2 rounded-xl border border-gray-200">
-                  <span className="text-[11px] font-bold text-gray-600">বিকাশ (Personal):</span>
+              <div className="space-y-2 pt-1 border-t border-gray-200">
+                <div className="flex items-center justify-between bg-pink-50/50 p-2.5 rounded-xl border border-pink-200">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-english font-bold text-xs">{bkashNumber}</span>
+                    <span className="w-2 h-2 rounded-full bg-pink-600 animate-pulse"></span>
+                    <span className="text-[11px] font-bold text-gray-800">বিকাশ (Personal):</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-english font-black text-xs text-pink-700">{bkashNumber}</span>
                     <button 
                       onClick={() => copyNumber(bkashNumber)}
-                      className="p-1 rounded bg-gray-100 hover:bg-gray-200 cursor-pointer"
+                      className="p-1 rounded bg-pink-100 hover:bg-pink-200 text-pink-800 cursor-pointer"
                       title="কপি করুন"
                     >
-                      <Copy className="w-3 h-3 text-gray-600" />
+                      <Copy className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between bg-white p-2 rounded-xl border border-gray-200">
-                  <span className="text-[11px] font-bold text-gray-600">নগদ (Personal):</span>
+                <div className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                  <span className="text-[11px] font-bold text-gray-500">নগদ (Personal):</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="font-english font-bold text-xs">{nagadNumber}</span>
-                    <button 
-                      onClick={() => copyNumber(nagadNumber)}
-                      className="p-1 rounded bg-gray-100 hover:bg-gray-200 cursor-pointer"
-                      title="কপি করুন"
-                    >
-                      <Copy className="w-3 h-3 text-gray-600" />
-                    </button>
+                    {isNagadActive ? (
+                      <>
+                        <span className="font-english font-bold text-xs">{nagadNumber}</span>
+                        <button 
+                          onClick={() => copyNumber(nagadNumber)}
+                          className="p-1 rounded bg-gray-100 hover:bg-gray-200 cursor-pointer"
+                          title="কপি করুন"
+                        >
+                          <Copy className="w-3 h-3 text-gray-600" />
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2 py-0.5 rounded-md">
+                        আপাতত বন্ধ / পেন্ডিং
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
 
               <p className="text-[10px] text-gray-500 leading-tight">
-                * Send Money করার পর ফিরতি মেসেজের <strong>TrxID</strong> নিচে লিখে সাবমিট করুন।
+                * বিকাশ Personal নম্বরে Send Money করার পর ফিরতি মেসেজের <strong>TrxID</strong> নিচে লিখে সাবমিট করুন।
               </p>
             </div>
 
@@ -220,20 +232,30 @@ export const AccountVerificationBanner: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setMethod('bKash')}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      method === 'bKash' ? 'bg-pink-50 border-pink-500 text-pink-700 font-black' : 'border-gray-200 text-gray-600'
+                    className={`py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      method === 'bKash' ? 'bg-pink-50 border-pink-500 text-pink-700 font-black shadow-xs' : 'border-gray-200 text-gray-600'
                     }`}
                   >
-                    বিকাশ (bKash)
+                    বিকাশ (bKash) • সক্রিয়
                   </button>
                   <button
                     type="button"
-                    onClick={() => setMethod('Nagad')}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      method === 'Nagad' ? 'bg-orange-50 border-orange-500 text-orange-700 font-black' : 'border-gray-200 text-gray-600'
+                    onClick={() => {
+                      if (!isNagadActive) {
+                        showToast('নগদ পেমেন্ট বর্তমানে সাময়িকভাবে বন্ধ আছে। অনুগ্রহ করে বিকাশ ব্যবহার করুন।', 'warning');
+                        return;
+                      }
+                      setMethod('Nagad');
+                    }}
+                    className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                      !isNagadActive 
+                        ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                        : method === 'Nagad' 
+                        ? 'bg-orange-50 border-orange-500 text-orange-700 font-black shadow-xs cursor-pointer' 
+                        : 'border-gray-200 text-gray-600 cursor-pointer'
                     }`}
                   >
-                    নগদ (Nagad)
+                    নগদ {isNagadActive ? '(Nagad)' : '(পেন্ডিং/বন্ধ)'}
                   </button>
                 </div>
               </div>

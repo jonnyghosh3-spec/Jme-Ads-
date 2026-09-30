@@ -31,7 +31,9 @@ import {
   Lock,
   RefreshCw,
   Bell,
-  Mail
+  Mail,
+  ArrowLeft,
+  Bot
 } from 'lucide-react';
 
 export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
@@ -86,6 +88,13 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
   const [ytVideo2Title, setYtVideo2Title] = useState(settings.youtubeVideo2Title || 'টিউটোরিয়াল ভিডিও ২: কীভাবে টাকা তুলবেন?');
   const [ytVideo2Url, setYtVideo2Url] = useState(settings.youtubeVideo2Url || '');
   const [tgUrl, setTgUrl] = useState(settings.telegramUrl || 'https://t.me/JMEAds_Official');
+
+  // Form states for Payment Numbers (bKash & Nagad)
+  const [localBkash, setLocalBkash] = useState(settings.publisherUpgradeBkash || '01722169178');
+  const [localNagad, setLocalNagad] = useState(settings.publisherUpgradeNagad || '');
+  const [localIsBkashActive, setLocalIsBkashActive] = useState(settings.isBkashActive !== false);
+  const [localIsNagadActive, setLocalIsNagadActive] = useState(settings.isNagadActive === true);
+  const [localUpgradeFee, setLocalUpgradeFee] = useState(settings.publisherUpgradeFee || 30);
 
   // Form states for Micro Jobs
   const [showAddJobModal, setShowAddJobModal] = useState(false);
@@ -284,37 +293,59 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
   const pendingPublishers = allUsersList.filter(u => u.verificationRequested && !u.isVerifiedPublisher);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-emerald-500/40 w-full max-w-4xl h-[92vh] max-h-[92vh] rounded-3xl shadow-2xl flex flex-col text-slate-100 overflow-hidden relative">
-        
-        {/* Header Bar */}
-        <div className="p-4 px-5 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-emerald-400" />
+    <div className="fixed inset-0 z-50 bg-slate-950 w-screen h-screen flex flex-col text-slate-100 overflow-hidden animate-in fade-in duration-200">
+      
+      {/* Top Header Bar */}
+      <header className="p-3.5 px-4 sm:px-6 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md flex items-center justify-between shrink-0 shadow-md">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Back Button to return directly to User App */}
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white active:scale-95 transition-all text-xs font-bold border border-slate-700 cursor-pointer shadow-xs"
+            title="ইউজার অ্যাপে ফিরে যান"
+          >
+            <ArrowLeft className="w-4 h-4 text-emerald-400" />
+            <span className="hidden sm:inline">অ্যাপে ফিরে যান</span>
+            <span className="sm:hidden">ব্যাক</span>
+          </button>
+
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center shrink-0">
+              <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-extrabold text-base sm:text-lg text-white font-english">
+                <h2 className="font-extrabold text-xs sm:text-base text-white font-english">
                   JME Ads Master Admin Panel
                 </h2>
-                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950">
+                <span className="text-[8px] sm:text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950">
                   ROOT ADMIN
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                বিজ্ঞাপন, অফার, ভিডিও, অর্ডার ও পেমেন্ট সম্পূর্ণ নিয়ন্ত্রণ
+              <p className="text-[10px] sm:text-[11px] text-slate-400 hidden sm:block">
+                বিকাশ/নগদ পেমেন্ট, বিজ্ঞাপন, অফার, ভিডিও ও ইউজার কন্ট্রোল
               </p>
             </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-xl text-[11px] sm:text-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="text-slate-300 font-semibold font-english">
+              {allUsersList.length} <span className="hidden sm:inline">Users</span>
+            </span>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-2xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+            title="বন্ধ করুন"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
+      </header>
 
         {/* PIN Authentication Screen */}
         {!isAuthenticated ? (
@@ -1039,31 +1070,88 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
                               </div>
                             </div>
 
-                            {/* Robot Tracking Data Analysis */}
-                            <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs space-y-1.5 mb-3">
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-slate-400 flex items-center gap-1.5">
-                                  <Clock className="w-3.5 h-3.5 text-sky-400" />
-                                  <span>রোবট ট্র্যাকিং সময় বিশ্লেষণ:</span>
-                                </span>
-                                <span className={`text-[11px] font-black px-2 py-0.5 rounded-md ${
-                                  isCompliant ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
-                                }`}>
-                                  {isCompliant ? '✓ সময়সীমা মানা হয়েছে' : '⚠ কম সময় কাটানো হয়েছে'}
-                                </span>
-                              </div>
+                            {/* AI Analytics & Verification Report */}
+                            {sub.aiAnalytics ? (
+                              <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-700 text-xs space-y-2 mb-3">
+                                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <Bot className="w-4 h-4 text-emerald-400" />
+                                    <span className="font-extrabold text-white text-xs">এআই অ্যানালিটিক্স যাচাইকরণ রিপোর্ট</span>
+                                  </div>
+                                  <span className={`text-[11px] font-black px-2.5 py-0.5 rounded-full font-english ${
+                                    sub.aiAnalytics.status === 'passed'
+                                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                      : sub.aiAnalytics.status === 'review_recommended'
+                                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                      : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                  }`}>
+                                    এআই স্কোর: {sub.aiAnalytics.confidenceScore}%
+                                  </span>
+                                </div>
 
-                              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
-                                <div>প্রয়োজনীয় সময়: <strong className="text-white font-english">{sub.requiredSeconds}s</strong></div>
-                                <div>ইউজার কাটিয়েছেন: <strong className={`font-english ${isCompliant ? 'text-emerald-400' : 'text-rose-400'}`}>{sub.spentSeconds}s</strong></div>
-                              </div>
-
-                              {sub.proofText && (
-                                <p className="text-[11px] text-slate-400 border-t border-slate-800 pt-1.5 mt-1.5">
-                                  ইউজারের নোট: <span className="text-slate-200">{sub.proofText}</span>
+                                <p className="text-[11px] text-slate-300 font-medium">
+                                  {sub.aiAnalytics.summary}
                                 </p>
-                              )}
-                            </div>
+
+                                {/* Tags */}
+                                {sub.aiAnalytics.tags && sub.aiAnalytics.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 pt-0.5">
+                                    {sub.aiAnalytics.tags.map((tag, tIdx) => (
+                                      <span key={tIdx} className="text-[10px] bg-slate-800 text-emerald-300 px-2 py-0.5 rounded-md border border-slate-700 font-semibold">
+                                        #{tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Detailed checks */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 text-[11px] text-slate-300 border-t border-slate-800/80">
+                                  <div>প্রয়োজনীয় সময়: <strong className="text-white font-english">{sub.requiredSeconds}s</strong></div>
+                                  <div>ইউজার কাটিয়েছেন: <strong className={`font-english ${isCompliant ? 'text-emerald-400' : 'text-rose-400'}`}>{sub.spentSeconds}s</strong></div>
+                                </div>
+
+                                <div className="space-y-1 text-[10px] text-slate-400 pt-1">
+                                  {sub.aiAnalytics.details?.map((detail, dIdx) => (
+                                    <div key={dIdx} className="flex items-start gap-1">
+                                      <span className="text-emerald-400">▪</span>
+                                      <span>{detail}</span>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {sub.proofText && (
+                                  <p className="text-[11px] text-slate-400 border-t border-slate-800 pt-1.5 mt-1">
+                                    ইউজারের সাবমিট নোট: <span className="text-slate-200">{sub.proofText}</span>
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              /* Fallback Robot Tracking Data Analysis if older submission without AI report */
+                              <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs space-y-1.5 mb-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-slate-400 flex items-center gap-1.5">
+                                    <Clock className="w-3.5 h-3.5 text-sky-400" />
+                                    <span>রোবট ট্র্যাকিং সময় বিশ্লেষণ:</span>
+                                  </span>
+                                  <span className={`text-[11px] font-black px-2 py-0.5 rounded-md ${
+                                    isCompliant ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                                  }`}>
+                                    {isCompliant ? '✓ সময়সীমা মানা হয়েছে' : '⚠ কম সময় কাটানো হয়েছে'}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                                  <div>প্রয়োজনীয় সময়: <strong className="text-white font-english">{sub.requiredSeconds}s</strong></div>
+                                  <div>ইউজার কাটিয়েছেন: <strong className={`font-english ${isCompliant ? 'text-emerald-400' : 'text-rose-400'}`}>{sub.spentSeconds}s</strong></div>
+                                </div>
+
+                                {sub.proofText && (
+                                  <p className="text-[11px] text-slate-400 border-t border-slate-800 pt-1.5 mt-1.5">
+                                    ইউজারের নোট: <span className="text-slate-200">{sub.proofText}</span>
+                                  </p>
+                                )}
+                              </div>
+                            )}
 
                             {/* Screenshots View (Dual proof) */}
                             <div className="space-y-1.5 mb-4">
@@ -1163,37 +1251,132 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
                   </div>
 
                   {/* Upgrade Payment Settings */}
-                  <div className="p-4 rounded-3xl bg-slate-950 border border-slate-800 space-y-3">
-                    <h4 className="font-bold text-xs text-white">ভেরিফিকেশন ফি ও পেমেন্ট নম্বর সেটিংস</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-5 rounded-3xl bg-slate-950 border border-emerald-500/40 space-y-4 shadow-lg">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                       <div>
-                        <label className="text-[11px] font-bold text-slate-400 block mb-1">ভেরিফিকেশন ফি (৳)</label>
+                        <h4 className="font-extrabold text-sm text-white flex items-center gap-2">
+                          <Wallet className="w-4 h-4 text-emerald-400" />
+                          <span>বিকাশ ও নগদ পেমেন্ট নম্বর নিয়ন্ত্রণ (Send Money Gateway)</span>
+                        </h4>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          ইউজাররা পার্মানেন্ট পাবলিশার ভেরিফিকেশনের জন্য কোন নম্বরে টাকা পাঠাবে তা নির্ধারণ করুন
+                        </p>
+                      </div>
+
+                      <span className="text-[11px] bg-slate-800 text-emerald-400 font-bold px-2.5 py-1 rounded-xl">
+                        ফি: ৳{localUpgradeFee}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* bKash Control Card */}
+                      <div className="p-4 rounded-2xl bg-slate-900 border border-pink-500/30 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center font-bold text-xs">
+                              Bk
+                            </div>
+                            <span className="text-xs font-bold text-white">বিকাশ পার্সোনাল নম্বর</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setLocalIsBkashActive(!localIsBkashActive)}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                              localIsBkashActive 
+                                ? 'bg-emerald-600 text-slate-950' 
+                                : 'bg-slate-800 text-slate-400'
+                            }`}
+                          >
+                            {localIsBkashActive ? 'সক্রিয় (Active)' : 'বন্ধ (OFF)'}
+                          </button>
+                        </div>
+
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="01722169178"
+                            value={localBkash}
+                            onChange={e => setLocalBkash(e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-pink-400 font-mono text-sm font-bold focus:border-pink-500 focus:outline-none"
+                          />
+                          <span className="text-[10px] text-slate-400 mt-1 block">
+                            বর্তমান নম্বর: <strong className="text-white font-mono">{localBkash}</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Nagad Control Card */}
+                      <div className="p-4 rounded-2xl bg-slate-900 border border-orange-500/30 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-orange-500/20 text-orange-400 flex items-center justify-center font-bold text-xs">
+                              Ng
+                            </div>
+                            <span className="text-xs font-bold text-white">নগদ পার্সোনাল নম্বর</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setLocalIsNagadActive(!localIsNagadActive)}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                              localIsNagadActive 
+                                ? 'bg-emerald-600 text-slate-950' 
+                                : 'bg-amber-500 text-slate-950'
+                            }`}
+                          >
+                            {localIsNagadActive ? 'সক্রিয় (Active)' : 'পেন্ডিং / বন্ধ'}
+                          </button>
+                        </div>
+
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="আপাতত বন্ধ / পেন্ডিং (বা নম্বর লিখুন)"
+                            value={localNagad}
+                            onChange={e => setLocalNagad(e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-orange-400 font-mono text-sm font-bold focus:border-orange-500 focus:outline-none"
+                          />
+                          <span className="text-[10px] text-slate-400 mt-1 block">
+                            স্ট্যাটাস: <strong className={localIsNagadActive ? 'text-emerald-400' : 'text-amber-400'}>
+                              {localIsNagadActive ? 'সক্রিয়' : 'আপাতত বন্ধ / পেন্ডিং'}
+                            </strong>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-400 block mb-1">
+                          ভেরিফিকেশন ফি (টাকা)
+                        </label>
                         <input
                           type="number"
-                          value={settings.publisherUpgradeFee || 30}
-                          onChange={e => adminUpdateSettings({ publisherUpgradeFee: Number(e.target.value) })}
-                          className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-english text-xs"
+                          value={localUpgradeFee}
+                          onChange={e => setLocalUpgradeFee(Number(e.target.value))}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-sm font-bold focus:border-emerald-500 focus:outline-none"
                         />
                       </div>
 
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-400 block mb-1">বিকাশ পার্সোনাল নম্বর</label>
-                        <input
-                          type="text"
-                          value={settings.publisherUpgradeBkash || ''}
-                          onChange={e => adminUpdateSettings({ publisherUpgradeBkash: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-english text-xs"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-400 block mb-1">নগদ পার্সোনাল নম্বর</label>
-                        <input
-                          type="text"
-                          value={settings.publisherUpgradeNagad || ''}
-                          onChange={e => adminUpdateSettings({ publisherUpgradeNagad: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-english text-xs"
-                        />
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await adminUpdateSettings({
+                              publisherUpgradeBkash: localBkash.trim(),
+                              publisherUpgradeNagad: localNagad.trim(),
+                              isBkashActive: localIsBkashActive,
+                              isNagadActive: localIsNagadActive,
+                              publisherUpgradeFee: Number(localUpgradeFee) || 30
+                            });
+                            showToast('বিকাশ ও নগদ পেমেন্ট সেটিংস সফলভাবে ক্লাউডে সেভ হয়েছে!', 'success');
+                          }}
+                          className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer active:scale-98"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>পেমেন্ট সেটিংস সংরক্ষণ করুন (Save)</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1456,15 +1639,44 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
 
                     <div>
                       <label className="text-xs font-bold text-white block mb-1">
-                        নেটিভ অ্যাড HTML কোড (Native Ad HTML)
+                        গুগল এডসেন্স পাবলিশার আইডি (Publisher ID)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="pub-1234567890123456"
+                        value={settings.adSensePublisherId || ''}
+                        onChange={e => adminUpdateSettings({ adSensePublisherId: e.target.value.trim() })}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-emerald-400 font-mono text-xs focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-white block mb-1">
+                        Ads.txt কন্টেন্ট (Custom Ads.txt)
                       </label>
                       <textarea
-                        rows={3}
-                        placeholder="নেটিভ বিজ্ঞাপনের HTML কোড লিখুন..."
-                        value={settings.nativeAdHtml || ''}
-                        onChange={e => adminUpdateSettings({ nativeAdHtml: e.target.value })}
+                        rows={2}
+                        placeholder="google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0"
+                        value={settings.adsTxtContent || 'google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0'}
+                        onChange={e => adminUpdateSettings({ adsTxtContent: e.target.value })}
                         className="w-full p-3 rounded-2xl bg-slate-900 border border-slate-700 text-emerald-400 font-mono text-xs focus:outline-none focus:border-emerald-500"
                       />
+                    </div>
+
+                    {/* AdSense Approval Readiness Checklist */}
+                    <div className="p-3.5 rounded-2xl bg-slate-900 border border-emerald-500/30 text-xs space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>অ্যাডসেন্স অ্যাপ্রুভাল রেডিনেস স্ট্যাটাস</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-slate-300">
+                        <div className="flex items-center gap-1 text-emerald-400">✓ প্রাইভেসি পলিসি (CCPA & GDPR)</div>
+                        <div className="flex items-center gap-1 text-emerald-400">✓ টার্মস অ্যান্ড কন্ডিশনস</div>
+                        <div className="flex items-center gap-1 text-emerald-400">✓ ডিসক্লেইমার ও আর্নিং পলিসি</div>
+                        <div className="flex items-center gap-1 text-emerald-400">✓ কুকিজ পলিসি পেজ</div>
+                        <div className="flex items-center gap-1 text-emerald-400">✓ এডুকেশনাল পাবলিশার গাইড</div>
+                        <div className="flex items-center gap-1 text-emerald-400">✓ কন্টাক্ট আস মেসেজিং পোর্টাল</div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1688,8 +1900,6 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
             </div>
           </div>
         )}
-
-      </div>
 
       {/* ADD / EDIT MICRO JOB MODAL */}
       {showAddJobModal && (

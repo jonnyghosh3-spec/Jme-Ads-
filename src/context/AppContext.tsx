@@ -10,7 +10,8 @@ import {
   AppSettings,
   MicroJobItem,
   JobSubmissionItem,
-  ContactMessageItem
+  ContactMessageItem,
+  AIAnalyticsReport
 } from '../types';
 import { DEFAULT_TASKS, DEFAULT_APP_SETTINGS } from '../data/defaultTasks';
 import { 
@@ -94,6 +95,7 @@ interface AppContextType {
   startMicroJob: (job: MicroJobItem) => void;
   completeMicroJob: () => void;
   cancelMicroJob: () => void;
+  updateUserAvatar: (photoDataUrl: string) => Promise<boolean>;
   submitJobProof: (data: {
     jobId: string;
     jobTitle: string;
@@ -103,6 +105,7 @@ interface AppContextType {
     spentSeconds: number;
     proofText?: string;
     reward: number;
+    aiAnalytics?: AIAnalyticsReport;
   }) => Promise<{ success: boolean; message?: string }>;
   jobSubmissions: JobSubmissionItem[];
   requestPublisherUpgrade: (trxId: string, method: string) => Promise<{ success: boolean; message?: string }>;
@@ -600,6 +603,47 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, []);
 
+  // Real-time synchronization of ALL users from Firestore (All 35+ users for Admin Panel)
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+        if (!snap.empty) {
+          const liveUsers = snap.docs.map(d => ({
+            ...d.data(),
+            uid: d.id
+          })) as UserProfile[];
+          setAllUsersList(liveUsers);
+          localStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(liveUsers));
+        }
+      }, (err) => {
+        console.warn('Live all users listener error:', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Setup live all users listener err:', e);
+    }
+  }, []);
+
+  // Real-time synchronization of ALL withdrawals from Firestore
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'withdrawals'), (snap) => {
+        const liveWithdrawals = snap.docs.map(d => ({
+          ...d.data(),
+          id: d.id
+        })) as WithdrawalItem[];
+        liveWithdrawals.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        setWithdrawals(liveWithdrawals);
+        localStorage.setItem(STORAGE_KEYS.WITHDRAWALS, JSON.stringify(liveWithdrawals));
+      }, (err) => {
+        console.warn('Live all withdrawals listener error:', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Setup live all withdrawals listener err:', e);
+    }
+  }, []);
+
   // Google AdSense Dynamic Script Injector
   useEffect(() => {
     if (settings.enableAdSense && settings.googleAdSenseCode && settings.googleAdSenseCode.trim() !== '') {
@@ -651,6 +695,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setLoading(true);
       const cleanEmail = email.trim().toLowerCase();
       const cleanPhone = phone.trim();
+
+      // 📱 Maximum 2 accounts per mobile/device limit
+      const DEVICE_ACCOUNTS_KEY = 'jme_device_accounts';
+      let deviceAccounts: string[] = [];
+      try {
+        const rawAccounts = localStorage.getItem(DEVICE_ACCOUNTS_KEY);
+        if (rawAccounts) deviceAccounts = JSON.parse(rawAccounts);
+      } catch (e) {}
+
+      const isAlreadyOnDevice = deviceAccounts.includes(cleanEmail) || (cleanPhone && deviceAccounts.includes(cleanPhone));
+      if (!isAlreadyOnDevice && deviceAccounts.length >= 2) {
+        const msg = '❌ একই ডিভাইসে/মোবাইলে সর্বোচ্চ ২টি অ্যাকাউন্ট খোলা অনুমোদিত। এই ডিভাইসে ইতোমধ্যে ২টি অ্যাকাউন্ট নিবন্ধিত আছে।';
+        showToast(msg, 'error');
+        return { success: false, message: msg };
+      }
 
       // Check if user already exists in Firestore or local cache
       try {
@@ -841,6 +900,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setUser(newUser);
       setAllUsersList(prev => [newUser, ...prev.filter(u => u.uid !== uid)]);
       localStorage.removeItem(STORAGE_KEYS.SAVED_REF);
+
+      // Save to device registered accounts list
+      if (!deviceAccounts.includes(cleanEmail)) {
+        deviceAccounts.push(cleanEmail);
+        localStorage.setItem(DEVICE_ACCOUNTS_KEY, JSON.stringify(deviceAccounts));
+      }
+
       const welcomeMsg = `🎉 স্বাগতম ${name}! আপনার অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে।`;
       showToast(welcomeMsg, 'success');
       setActiveTab('home');
@@ -1558,7 +1624,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('কাজটি বাতিল করা হয়েছে।', 'info');
   };
 
-  // Submit Remote Job Proof (with dual screenshots and time verification)
+  // Update User Profile Avatar / Logo (compressed under 100KB)
+  const updateUserAvatar = async (photoDataUrl: string): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const updatedUser: UserProfile = { ...user, photoURL: photoDataUrl };
+      setUser(updatedUser);
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+
+      // Also update in allUsersList in state & storage
+      setAllUsersList(prev => prev.map(u => u.uid === user.uid ? { ...u, photoURL: photoDataUrl } : u));
+
+      // Update in Firestore
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          photoURL: photoDataUrl
+        });
+      } catch (err) {
+        console.warn('Firestore user avatar update note:', err);
+      }
+      return true;
+    } catch (e) {
+      console.error('Failed to update avatar:', e);
+      return false;
+    }
+  };
+
+  // Submit Remote Job Proof (with dual screenshots, AI analytics and time verification)
   const submitJobProof = async (data: {
     jobId: string;
     jobTitle: string;
@@ -1568,6 +1660,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     spentSeconds: number;
     proofText?: string;
     reward: number;
+    aiAnalytics?: AIAnalyticsReport;
   }): Promise<{ success: boolean; message?: string }> => {
     if (!user) return { success: false, message: 'প্রথমে লগইন করুন' };
 
@@ -1586,6 +1679,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       proofText: data.proofText,
       reward: data.reward,
       status: 'pending',
+      aiAnalytics: data.aiAnalytics,
       submittedAt: Date.now()
     };
 
@@ -1594,6 +1688,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         ...submission,
         createdAtServer: serverTimestamp()
       });
+
+      // Update local submissions list state as well
+      setJobSubmissions(prev => [submission, ...prev.filter(s => s.id !== newId)]);
 
       // Mark completed for today in user's profile
       await updateDoc(doc(db, 'users', user.uid), {
@@ -2095,6 +2192,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         startMicroJob,
         completeMicroJob,
         cancelMicroJob,
+        updateUserAvatar,
         submitJobProof,
         jobSubmissions,
         requestPublisherUpgrade,

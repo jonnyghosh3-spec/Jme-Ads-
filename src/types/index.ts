@@ -25,6 +25,23 @@ export interface UserProfile {
   verificationRequested?: boolean;
   verificationTrxId?: string;
   verificationMethod?: string;
+  photoURL?: string; // Custom profile logo/avatar compressed under 100KB
+}
+
+export interface AIAnalyticsReport {
+  status: 'passed' | 'review_recommended' | 'suspicious';
+  confidenceScore: number; // 0 - 100
+  summary: string;
+  checks: {
+    durationValid: boolean;
+    hasStartScreenshot: boolean;
+    hasEndScreenshot: boolean;
+    differentScreenshots: boolean;
+    imageCompressedUnder100kb: boolean;
+  };
+  details: string[];
+  tags: string[];
+  analyzedAt: number;
 }
 
 export interface MicroJobItem {
@@ -61,6 +78,7 @@ export interface JobSubmissionItem {
   reward: number;
   status: 'pending' | 'approved' | 'rejected';
   adminNote?: string;
+  aiAnalytics?: AIAnalyticsReport;
   submittedAt: number;
   reviewedAt?: number;
 }
@@ -155,10 +173,14 @@ export interface AppSettings {
   popunderAdUrl?: string; // Popunder or Direct Ad URL
   apkDownloadUrl?: string; // Custom APK download link
   showPublisherUpgradeBanner?: boolean; // Admin toggle to show/hide upgrade banner
-  publisherUpgradeFee?: number; // e.g. ৳100 or ৳200
-  publisherUpgradeBkash?: string; // e.g. 017...
+  publisherUpgradeFee?: number; // e.g. ৳30
+  publisherUpgradeBkash?: string; // e.g. 01722169178
   publisherUpgradeNagad?: string; // e.g. 018...
+  isBkashActive?: boolean; // bKash payment active status
+  isNagadActive?: boolean; // Nagad payment active status
   googleAdSenseCode?: string; // AdSense Verification HTML/script snippet
+  adSensePublisherId?: string; // e.g. pub-1234567890123456
+  adsTxtContent?: string; // Custom ads.txt line(s)
   enableAdSense?: boolean; // Enable AdSense toggle
   cpmSmartlinkUrl?: string; // Primary high CPM smartlink URL
   cpmRate?: number; // Primary CPM rate display e.g. 0.3
