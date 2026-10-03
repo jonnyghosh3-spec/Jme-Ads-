@@ -15,10 +15,29 @@ import {
 } from 'lucide-react';
 
 export const TeamPage: React.FC = () => {
-  const { user, referrals, settings, showToast } = useApp();
+  const { user, referrals, settings, showToast, bindReferralCode } = useApp();
+
+  const [inputFriendRef, setInputFriendRef] = React.useState('');
+  const [isApplyingRef, setIsApplyingRef] = React.useState(false);
 
   const refCode = user?.referralCode || 'JME8X7K2';
   const referralUrl = `${window.location.origin}/?ref=${refCode}`;
+
+  const handleApplyReferralCode = async () => {
+    if (!inputFriendRef.trim()) {
+      showToast('রেফারেল কোডটি লিখুন', 'warning');
+      return;
+    }
+    setIsApplyingRef(true);
+    const res = await bindReferralCode(inputFriendRef.trim());
+    setIsApplyingRef(false);
+    if (res.success) {
+      showToast(res.message, 'success');
+      setInputFriendRef('');
+    } else {
+      showToast(res.message, 'error');
+    }
+  };
 
   const copyCode = () => {
     navigator.clipboard.writeText(refCode);
@@ -151,6 +170,32 @@ export const TeamPage: React.FC = () => {
             <span>লিংক শেয়ার করুন</span>
           </button>
         </div>
+
+        {/* If user was not referred by anyone yet, allow entering a friend's referral code */}
+        {!user?.referredBy && (
+          <div className="pt-3 border-t border-gray-100">
+            <span className="text-[11px] font-bold text-gray-700 block mb-1.5">
+              অন্যের রেফারেল কোড বসিয়ে যুক্ত হতে চান?
+            </span>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="বন্ধুর রেফার কোড (যেমন: JME8X7K2)"
+                value={inputFriendRef}
+                onChange={e => setInputFriendRef(e.target.value.toUpperCase())}
+                className="flex-1 px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs font-english uppercase focus:outline-none focus:border-emerald-500 font-bold"
+              />
+              <button
+                type="button"
+                onClick={handleApplyReferralCode}
+                disabled={isApplyingRef}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs active:scale-95 transition-all shadow-xs cursor-pointer shrink-0"
+              >
+                {isApplyingRef ? 'যুক্ত হচ্ছে...' : 'যুক্ত করুন'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. How to earn from referral */}

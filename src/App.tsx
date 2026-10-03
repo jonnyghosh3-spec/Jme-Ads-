@@ -5,7 +5,7 @@ import { BottomNav } from './components/BottomNav';
 import { TaskVerificationModal } from './components/TaskVerificationModal';
 import { SupportModal } from './components/SupportModal';
 import { AuthModal } from './components/AuthModal';
-import { LivePayoutTicker } from './components/LivePayoutTicker';
+import { NotificationPermissionPrompt } from './components/NotificationPermissionPrompt';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 import { HomePage } from './pages/HomePage';
@@ -178,8 +178,8 @@ const MainApp: React.FC = () => {
             onClose={() => setShowAdminModal(false)} 
           />
 
-          {/* Live Payout Ticker (5 automatic withdrawal messages per minute with progress animation) */}
-          {settings.showLivePayoutTicker !== false && <LivePayoutTicker />}
+          {/* Device Browser Notification Permission Prompt (Checks upon landing & every minute) */}
+          <NotificationPermissionPrompt />
         </div>
       )}
 

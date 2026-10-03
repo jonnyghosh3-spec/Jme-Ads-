@@ -8,13 +8,17 @@ import {
   Clock, 
   AlertCircle, 
   ShieldCheck, 
+  ShieldAlert,
   History,
   Users,
-  X
+  X,
+  Copy,
+  Send,
+  Lock
 } from 'lucide-react';
 
 export const WithdrawPage: React.FC = () => {
-  const { user, withdrawals, referrals, settings, requestWithdrawal, showToast, setActiveTab } = useApp();
+  const { user, withdrawals, referrals, settings, requestWithdrawal, requestPublisherUpgrade, showToast, setActiveTab } = useApp();
 
   const [method, setMethod] = useState<'bKash' | 'Nagad'>('bKash');
   const [accountNumber, setAccountNumber] = useState('');
@@ -23,6 +27,10 @@ export const WithdrawPage: React.FC = () => {
   const [isCustom, setIsCustom] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [securityTrxId, setSecurityTrxId] = useState('');
+  const [securityMethod, setSecurityMethod] = useState<'bKash' | 'Nagad'>('bKash');
+  const [isSubmittingSecurity, setIsSubmittingSecurity] = useState(false);
 
   // 10 preset amounts as mandated in PRD
   const presetAmounts = [1000, 1200, 1500, 2000, 2500, 3000, 5000, 7000, 10000];
@@ -36,6 +44,19 @@ export const WithdrawPage: React.FC = () => {
   const userReferralsCount = referrals.filter(r => r.referrerUid === user?.uid).length;
   const hasMetReferralCondition = userReferralsCount >= minRequiredReferrals;
 
+  const verificationThreshold = user?.verificationThreshold || settings.minBalanceForVerification || 500;
+  const isSecurityRequired = Boolean(user && user.balance >= verificationThreshold && !user.isVerifiedPublisher && !user.isSecurityVerified);
+
+  const upgradeFee = settings.publisherUpgradeFee || 50;
+  const bkashNumber = settings.publisherUpgradeBkash || '01722169178';
+  const isNagadActive = settings.isNagadActive === true;
+  const nagadNumber = settings.publisherUpgradeNagad || 'আপাতত বন্ধ / পেন্ডিং';
+
+  const copyNumber = (num: string) => {
+    navigator.clipboard.writeText(num);
+    showToast(`নম্বর "${num}" কপি হয়েছে!`, 'success');
+  };
+
   const handlePresetSelect = (amt: number) => {
     setIsCustom(false);
     setSelectedAmount(amt);
@@ -44,6 +65,12 @@ export const WithdrawPage: React.FC = () => {
   const handleOpenConfirm = () => {
     if (!user) {
       showToast('উত্তোলন করতে প্রথমে লগইন করুন।', 'warning');
+      return;
+    }
+    // 50 Tk Security Verification check when balance reaches 500-1000 Tk
+    if (isSecurityRequired) {
+      showToast('টাকা তোলার পূর্বে ৫০ টাকা দিয়ে অ্যাকাউন্ট সিকিউরিটি ভেরিফিকেশন সম্পন্ন করতে হবে!', 'error');
+      setShowSecurityModal(true);
       return;
     }
     if (!hasMetReferralCondition) {
@@ -79,6 +106,28 @@ export const WithdrawPage: React.FC = () => {
     }
   };
 
+  const handleSecuritySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!securityTrxId.trim()) {
+      showToast('অনুগ্রহ করে লেনদেনের TrxID প্রদান করুন', 'warning');
+      return;
+    }
+    setIsSubmittingSecurity(true);
+    try {
+      const res = await requestPublisherUpgrade(securityTrxId.trim(), securityMethod);
+      if (res.success) {
+        setShowSecurityModal(false);
+        showToast('🎉 ৫০ টাকা ভেরিফিকেশন আবেদন জমা হয়েছে! এডমিন কনফার্ম করলেই উত্তোলন সক্রিয় হবে।', 'success');
+      } else {
+        showToast(res.message || 'ভেরিফিকেশন জমা দিতে সমস্যা হয়েছে', 'error');
+      }
+    } catch (e: any) {
+      showToast('এরর: ' + e.message, 'error');
+    } finally {
+      setIsSubmittingSecurity(false);
+    }
+  };
+
   const userWithdrawals = withdrawals.filter(w => w.uid === user?.uid);
 
   return (
@@ -103,56 +152,109 @@ export const WithdrawPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Critical Referral Requirement Status Card */}
-      <div className={`p-4 rounded-3xl border transition-all ${
-        hasMetReferralCondition
-          ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-          : 'bg-amber-50 border-amber-300 text-amber-950'
-      }`}>
-        <div className="flex items-start justify-between gap-3">
+      {/* Mandatory 50 Tk Security Verification Requirement Banner */}
+      {isSecurityRequired && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-amber-600 via-orange-600 to-rose-600 text-white shadow-xl border-2 border-amber-300/40 space-y-3 animate-in fade-in duration-300">
           <div className="flex items-start gap-3">
-            <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 mt-0.5 ${
-              hasMetReferralCondition ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-amber-950'
-            }`}>
-              <Users className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 border border-white/30 shadow-md">
+              <ShieldAlert className="w-6 h-6 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="font-extrabold text-xs sm:text-sm">
-                  উত্তোলনের মূল শর্ত: সর্বনিম্ন ২০ জন রেফারেল
-                </h4>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  hasMetReferralCondition ? 'bg-emerald-600 text-white' : 'bg-red-500 text-white'
-                }`}>
-                  {hasMetReferralCondition ? 'শর্ত পূরণ হয়েছে' : 'শর্ত বাকি'}
+                <span className="text-xs font-black uppercase px-2.5 py-0.5 rounded-full bg-white text-orange-900 shadow-xs">
+                  টাকা তোলার আবশ্যিক শর্ত
                 </span>
+                <span className="text-[11px] font-bold text-amber-100">৫০ টাকা ভেরিফিকেশন</span>
               </div>
-              <p className="text-[11px] mt-1 leading-relaxed opacity-90">
-                উত্তোলন সক্রিয় করতে আপনার একাউন্টে কমপক্ষে ২০ জন সক্রিয় রেফারেল থাকা আবশ্যক।
+              <h3 className="font-black text-sm sm:text-base text-white mt-1">
+                উত্তোলন করতে ৫০ টাকা দিয়ে অ্যাকাউন্ট ভেরিফাই করুন
+              </h3>
+              <p className="text-xs text-amber-100 leading-relaxed mt-1">
+                আপনার ব্যালেন্স ৫০০ টাকার বাজেট অতিক্রম করেছে। ভুয়া অ্যাকাউন্ট ও প্রতারণা রোধে উত্তোলন সক্রিয় করতে এককালীন ৫০ টাকা সিকিউরিটি ভেরিফিকেশন ফি প্রদান আবশ্যক, অন্যথায় টাকা তুলতে পারবেন না।
               </p>
-              <div className="mt-2.5 flex items-center gap-2">
-                <div className="flex-1 bg-white/80 rounded-full h-2.5 overflow-hidden border border-gray-200">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      hasMetReferralCondition ? 'bg-emerald-500' : 'bg-amber-500'
-                    }`}
-                    style={{ width: `${Math.min(100, (userReferralsCount / minRequiredReferrals) * 100)}%` }}
-                  />
-                </div>
-                <span className="text-xs font-bold font-english shrink-0">
-                  {userReferralsCount}/{minRequiredReferrals} জন
-                </span>
-              </div>
             </div>
           </div>
-          {!hasMetReferralCondition && (
+
+          <div className="flex items-center justify-between pt-2 border-t border-white/20">
+            <span className="text-xs font-bold text-amber-100 flex items-center gap-1 font-english">
+              <Lock className="w-3.5 h-3.5" />
+              <span>ভেরিফিকেশন ফি: ৳{upgradeFee} (৫০ টাকা)</span>
+            </span>
+
             <button
-              onClick={() => setActiveTab('team')}
-              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shrink-0 active:scale-95 transition-all shadow-xs"
+              onClick={() => setShowSecurityModal(true)}
+              className="px-4 py-2.5 rounded-2xl bg-white hover:bg-amber-50 text-orange-950 font-black text-xs shadow-lg active:scale-95 transition-all cursor-pointer"
             >
-              রেফার করুন
+              এখনই ৫০ টাকা ভেরিফাই করুন
             </button>
-          )}
+          </div>
+        </div>
+      )}
+
+      {/* 20-Referral Requirement Milestone Card (Clean, Modern, Professional) */}
+      <div className={`p-4 rounded-3xl border transition-all ${
+        hasMetReferralCondition
+          ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
+          : 'bg-slate-900 border-slate-800 text-white shadow-md'
+      }`}>
+        <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/10">
+          <div className="flex items-center gap-2.5">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+              hasMetReferralCondition ? 'bg-emerald-500 text-white' : 'bg-emerald-500/20 text-emerald-400'
+            }`}>
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="font-extrabold text-xs sm:text-sm">
+                রেফারেল ভেরিফিকেশন অগ্রগতি
+              </h4>
+              <span className={`text-[10px] block ${hasMetReferralCondition ? 'text-emerald-700 font-semibold' : 'text-slate-400'}`}>
+                উত্তোলনের নিয়ম: ২০ জন সক্রিয় মেম্বার
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full font-english ${
+              hasMetReferralCondition 
+                ? 'bg-emerald-600 text-white' 
+                : 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
+            }`}>
+              {hasMetReferralCondition ? '✓ শর্ত সম্পন্ন' : `${userReferralsCount}/${minRequiredReferrals} জন`}
+            </span>
+          </div>
+        </div>
+
+        {/* Progress Bar & Clean Action Strip */}
+        <div className="pt-2.5 space-y-2">
+          <div className={`w-full rounded-full h-2 overflow-hidden border ${hasMetReferralCondition ? 'bg-emerald-200 border-emerald-300' : 'bg-slate-800 border-slate-700/60'}`}>
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                hasMetReferralCondition 
+                  ? 'bg-emerald-600' 
+                  : 'bg-gradient-to-r from-emerald-500 to-teal-400'
+              }`}
+              style={{ width: `${Math.min(100, (userReferralsCount / minRequiredReferrals) * 100)}%` }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-2 text-[11px]">
+            <span className={`leading-tight ${hasMetReferralCondition ? 'text-emerald-800 font-medium' : 'text-slate-300'}`}>
+              {hasMetReferralCondition 
+                ? 'আপনার ২০ জন রেফারেল সম্পন্ন হয়েছে। এখন নির্দ্বিধায় উত্তোলন করতে পারবেন।' 
+                : `আর মাত্র ${Math.max(0, minRequiredReferrals - userReferralsCount)} জন রেফারেল বাকি আছে`}
+            </span>
+
+            {!hasMetReferralCondition && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('team')}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shrink-0 cursor-pointer active:scale-95 transition-all shadow-xs"
+              >
+                রেফার করুন
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -419,6 +521,158 @@ export const WithdrawPage: React.FC = () => {
                 {isSubmitting ? 'প্রক্রিয়াধীন...' : 'নিশ্চিত করুন'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 50 Tk Security Verification Modal */}
+      {showSecurityModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl relative border border-emerald-100 space-y-4 max-h-[90vh] overflow-y-auto">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-gray-900">৫০ টাকা সিকিউরিটি ভেরিফিকেশন</h3>
+                  <span className="text-[10px] text-amber-600 font-bold">উত্তোলন অনুমোদন ও পার্মানেন্ট আইডি অ্যাক্টিভেশন</span>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setShowSecurityModal(false)}
+                className="p-1 rounded-full text-gray-400 hover:text-gray-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Why Verification Note */}
+            <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-1">
+              <p className="font-bold flex items-center gap-1 text-[11px] text-amber-900">
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                <span>উত্তোলনের আবশ্যিক শর্ত:</span>
+              </p>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                আপনার ব্যালেন্স ৫০০ টাকার বাজেট অতিক্রম করায় প্রতারণা ও রোবট রোধে এককালীন ৫০ টাকা ফি প্রদান করে অ্যাকাউন্ট ভেরিফাই করতে হবে। অন্যথায় টাকা তুলতে পারবেন না।
+              </p>
+            </div>
+
+            {/* Payment Details */}
+            <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200 text-xs space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-gray-700">ভেরিফিকেশন ফি:</span>
+                <span className="font-black text-emerald-700 text-base font-english">৳{upgradeFee} (৫০ টাকা)</span>
+              </div>
+
+              <div className="space-y-2 pt-1 border-t border-gray-200">
+                {/* bKash */}
+                <div className="flex items-center justify-between bg-pink-50/60 p-2.5 rounded-xl border border-pink-200">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-pink-600 animate-pulse"></span>
+                    <span className="text-[11px] font-bold text-gray-800">বিকাশ Personal:</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-english font-black text-xs text-pink-700">{bkashNumber}</span>
+                    <button 
+                      onClick={() => copyNumber(bkashNumber)}
+                      className="p-1 rounded bg-pink-100 hover:bg-pink-200 text-pink-800 cursor-pointer"
+                      title="কপি করুন"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Nagad */}
+                <div className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                  <span className="text-[11px] font-bold text-gray-500">নগদ Personal:</span>
+                  <div className="flex items-center gap-1.5">
+                    {isNagadActive ? (
+                      <>
+                        <span className="font-english font-bold text-xs">{nagadNumber}</span>
+                        <button 
+                          onClick={() => copyNumber(nagadNumber)}
+                          className="p-1 rounded bg-gray-100 hover:bg-gray-200 cursor-pointer"
+                          title="কপি করুন"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2 py-0.5 rounded-md">
+                        আপাতত বন্ধ / পেন্ডিং
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-gray-500 leading-tight">
+                * বিকাশ Personal নম্বরে ৫০ টাকা Send Money করে ফিরতি SMS থেকে <strong>TrxID</strong> নিচে লিখে সাবমিট করুন।
+              </p>
+            </div>
+
+            {/* Submission Form */}
+            <form onSubmit={handleSecuritySubmit} className="space-y-3">
+              <div>
+                <label className="text-[11px] font-bold text-gray-700 block mb-1">পেমেন্ট মেথড:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSecurityMethod('bKash')}
+                    className={`py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      securityMethod === 'bKash' ? 'bg-pink-50 border-pink-500 text-pink-700 font-black shadow-xs' : 'border-gray-200 text-gray-600'
+                    }`}
+                  >
+                    বিকাশ (bKash) • সক্রিয়
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isNagadActive) {
+                        showToast('নগদ পেমেন্ট বর্তমানে সাময়িকভাবে বন্ধ আছে। বিকাশ নম্বর ব্যবহার করুন।', 'warning');
+                        return;
+                      }
+                      setSecurityMethod('Nagad');
+                    }}
+                    className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                      !isNagadActive 
+                        ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                        : securityMethod === 'Nagad' 
+                        ? 'bg-orange-50 border-orange-500 text-orange-700 font-black shadow-xs cursor-pointer' 
+                        : 'border-gray-200 text-gray-600 cursor-pointer'
+                    }`}
+                  >
+                    নগদ {isNagadActive ? '(Nagad)' : '(পেন্ডিং)'}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-gray-700 block mb-1">ট্রানজেকশন আইডি (TrxID):</label>
+                <input 
+                  type="text" 
+                  value={securityTrxId}
+                  onChange={(e) => setSecurityTrxId(e.target.value.toUpperCase())}
+                  placeholder="যেমন: 9J82KL09MN" 
+                  className="w-full p-2.5 rounded-xl border border-gray-200 text-xs font-english font-bold uppercase focus:border-amber-500 focus:outline-none" 
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingSecurity}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+                <span>{isSubmittingSecurity ? 'যাচাই করা হচ্ছে...' : '৫০ টাকা ভেরিফিকেশন রিকোয়েস্ট পাঠান'}</span>
+              </button>
+            </form>
+
           </div>
         </div>
       )}

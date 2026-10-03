@@ -11,7 +11,8 @@ import {
   MicroJobItem,
   JobSubmissionItem,
   ContactMessageItem,
-  AIAnalyticsReport
+  AIAnalyticsReport,
+  YouTubeTutorialItem
 } from '../types';
 import { 
   triggerDeviceNotification, 
@@ -87,6 +88,8 @@ interface AppContextType {
   startTask: (task: TaskItem) => void;
   completeActiveTask: () => void;
   cancelActiveTask: () => void;
+  // Referral binding
+  bindReferralCode: (refCode: string) => Promise<{ success: boolean; message: string }>;
   // Withdrawal
   requestWithdrawal: (method: 'bKash' | 'Nagad' | 'Rocket' | 'Upay', accountNumber: string, amount: number) => Promise<{ success: boolean; error?: string }>;
   // Spin
@@ -125,7 +128,15 @@ interface AppContextType {
   adminDeleteMicroJob: (id: string) => Promise<void>;
   // Admin methods
   adminUpdateUserBalance: (uid: string, delta: number, reason: string) => void;
+  adminAdjustUserBalance: (uid: string, delta: number, reason: string) => Promise<void>;
   adminToggleUserStatus: (uid: string, status: 'active' | 'suspended') => void;
+  adminSetUserStatus: (uid: string, status: 'active' | 'under_review' | 'suspended' | 'banned', reason?: string) => Promise<void>;
+  requestSecurityVerification: (method: string, trxId: string) => Promise<{ success: boolean; message?: string }>;
+  adminApproveSecurityVerification: (userId: string) => Promise<void>;
+  adminAddYouTubeTutorial: (tutorial: Omit<YouTubeTutorialItem, 'id' | 'createdAt'>) => Promise<void>;
+  adminUpdateYouTubeTutorial: (id: string, updates: Partial<YouTubeTutorialItem>) => Promise<void>;
+  adminDeleteYouTubeTutorial: (id: string) => Promise<void>;
+  adminToggleYouTubeTutorialActive: (id: string) => Promise<void>;
   adminUpdateWithdrawalStatus: (id: string, status: 'approved' | 'paid' | 'rejected' | 'processing', note?: string) => void;
   adminUpdateTask: (task: TaskItem) => void;
   adminAddTask: (task: Omit<TaskItem, 'id'>) => void;
@@ -167,9 +178,9 @@ const STORAGE_KEYS = {
 const DEFAULT_MICRO_JOBS: MicroJobItem[] = [
   {
     id: 'mj_youtube_1',
-    title: 'ইউটিউব ভিডিও দেখুন ও ইনকাম করুন (২ মিনিট)',
+    title: 'ইউটিউব ভিডিও টিউটোরিয়াল/ওয়াজ দেখুন (২ মিনিট)',
     category: 'youtube',
-    categoryLabel: 'ইউটিউব ভিডিও',
+    categoryLabel: 'টিউটোরিয়াল/ওয়াজ ভিডিও',
     description: 'ভিডিওটি সম্পূর্ণ ১২০ সেকেন্ড (২ মিনিট) মনোযোগ সহকারে দেখুন। ভিডিও চলাকালীন পেজ বন্ধ করবেন না। টাইমার শেষ হলে স্বয়ংক্রিয়ভাবে ৳১০ টাকা আপনার ব্যালেন্সে যোগ হবে।',
     url: 'https://www.youtube.com',
     requiredDurationSeconds: 120,
@@ -185,15 +196,30 @@ const DEFAULT_MICRO_JOBS: MicroJobItem[] = [
     title: 'ইউটিউব চ্যানেল সাবস্ক্রাইব ও বেল আইকন',
     category: 'subscribe',
     categoryLabel: 'চ্যানেল সাবস্ক্রাইব',
-    description: 'আমাদের ইউটিউব চ্যানেলে প্রবেশ করে সাবস্ক্রাইব করুন এবং বেল আইকনে ক্লিক করুন। কমপক্ষে ৬০ সেকেন্ড অবস্থান করুন।',
+    description: 'আমাদের ইউটিউব চ্যানেলে প্রবেশ করে সাবস্ক্রাইব করুন এবং বেল আইকনে ক্লিক করুন। স্ক্রিনশট আপলোড করলে ইঞ্জিন স্বয়ংক্রিয়ভাবে ভেরিফাই করে ২০ টাকা যোগ করবে।',
     url: 'https://www.youtube.com',
     requiredDurationSeconds: 60,
-    reward: 8,
-    priority: 90,
+    reward: 20,
+    priority: 95,
     active: true,
     totalSubmissions: 35,
     dailyLimit: 1,
     createdAt: Date.now() - 72000000
+  },
+  {
+    id: 'mj_telegram_4',
+    title: 'টেলিগ্রাম চ্যানেল সাবস্ক্রাইব ও জয়েন',
+    category: 'subscribe',
+    categoryLabel: 'টেলিগ্রাম সাবস্ক্রাইব',
+    description: 'আমাদের অফিসিয়াল টেলিগ্রাম চ্যানেলে জয়েন/সাবস্ক্রাইব করুন। স্ক্রিনশট দিলে ইঞ্জিন নিজে থেকেই ভেরিফাই করে ২০ টাকা আপনার একাউন্টে যোগ করবে।',
+    url: 'https://t.me/JMEAds_Official',
+    requiredDurationSeconds: 30,
+    reward: 20,
+    priority: 90,
+    active: true,
+    totalSubmissions: 89,
+    dailyLimit: 1,
+    createdAt: Date.now() - 30000000
   },
   {
     id: 'mj_website_3',
@@ -209,21 +235,6 @@ const DEFAULT_MICRO_JOBS: MicroJobItem[] = [
     totalSubmissions: 58,
     dailyLimit: 1,
     createdAt: Date.now() - 50000000
-  },
-  {
-    id: 'mj_telegram_4',
-    title: 'টেলিগ্রাম গ্রুপ জয়েন ও পিন পোস্ট ভিউ',
-    category: 'special',
-    categoryLabel: 'টেলিগ্রাম টাস্ক',
-    description: 'আমাদের অফিসিয়াল টেলিগ্রাম চ্যানেলে জয়েন করুন এবং পিন পোস্টটি ৩০ সেকেন্ড দেখে বোনাস গ্রহণ করুন।',
-    url: 'https://t.me/JMEAds_Official',
-    requiredDurationSeconds: 30,
-    reward: 5,
-    priority: 70,
-    active: true,
-    totalSubmissions: 89,
-    dailyLimit: 1,
-    createdAt: Date.now() - 30000000
   }
 ];
 
@@ -237,11 +248,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [activeTab, setActiveTab] = useState<string>('home');
   const [tasks, setTasks] = useState<TaskItem[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.TASKS);
-    return saved ? JSON.parse(saved) : DEFAULT_TASKS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return DEFAULT_TASKS;
   });
   const [microJobs, setMicroJobs] = useState<MicroJobItem[]>(() => {
     const saved = localStorage.getItem('jme_micro_jobs');
-    return saved ? JSON.parse(saved) : DEFAULT_MICRO_JOBS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return DEFAULT_MICRO_JOBS;
   });
   const [activeMicroJob, setActiveMicroJob] = useState<MicroJobItem | null>(null);
   const [microJobSecondsLeft, setMicroJobSecondsLeft] = useState<number>(0);
@@ -265,6 +288,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
     return granted;
   };
+
+  // Continuous Notification Permission Check:
+  // "পারমিশন যদি না দেওয়া থাকে, সবসময় যখন ওয়েবসাইটে আসবে পারমিশন চাইবে ব্রাউজার থেকে। যদি না দেয় প্রতি মিনিটে মিনিটে চাইবে।"
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+
+    const askPermissionIfUnset = async () => {
+      if (Notification.permission !== 'granted') {
+        try {
+          const res = await Notification.requestPermission();
+          setNotificationPermission(getNotificationPermissionStatus());
+          if (res === 'granted') {
+            await requestDeviceNotificationPermission(user?.uid);
+            showToast('🎉 মোবাইলে নোটিফিকেশন সফলভাবে চালু হয়েছে!', 'success');
+          }
+        } catch (e) {
+          // Handled safely
+        }
+      }
+    };
+
+    // 1. Ask immediately after 2 seconds upon entering the website
+    const initTimer = setTimeout(askPermissionIfUnset, 2000);
+
+    // 2. If still not granted, ask every 1 minute (60,000 ms)
+    const interval = setInterval(() => {
+      if (Notification.permission !== 'granted') {
+        askPermissionIfUnset();
+      }
+    }, 60000);
+
+    return () => {
+      clearTimeout(initTimer);
+      clearInterval(interval);
+    };
+  }, [user?.uid]);
   const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -405,8 +464,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (data.settings && !existingSettings) {
           setSettings((prev) => ({ ...prev, ...data.settings }));
         }
+        // Never overwrite database tasks or saved state!
         if (Array.isArray(data.tasks) && data.tasks.length > 0) {
           setTasks((prev) => {
+            if (prev && prev.length > 0) return prev;
             const hasCustom = localStorage.getItem(STORAGE_KEYS.TASKS);
             return hasCustom ? prev : data.tasks;
           });
@@ -537,21 +598,51 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Real-time synchronization of user's referrals list from Firestore
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid && !user?.referralCode) return;
     try {
-      const qRef = query(collection(db, 'referrals'), where('referrerUid', '==', user.uid));
-      const unsub = onSnapshot(qRef, (snap) => {
-        const liveReferrals = snap.docs.map(d => ({ ...d.data(), id: d.id })) as ReferralItem[];
-        liveReferrals.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        setReferrals(liveReferrals);
+      // Listen by referrerUid
+      const qRefUid = query(collection(db, 'referrals'), where('referrerUid', '==', user?.uid || ''));
+      const unsubUid = onSnapshot(qRefUid, (snap) => {
+        const liveByUid = snap.docs.map(d => ({ ...d.data(), id: d.id })) as ReferralItem[];
+        setReferrals(prev => {
+          const map = new Map<string, ReferralItem>();
+          prev.forEach(item => map.set(item.id, item));
+          liveByUid.forEach(item => map.set(item.id, item));
+          const merged = Array.from(map.values());
+          merged.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          return merged;
+        });
       }, (err) => {
-        console.warn('Live referrals listener note:', err);
+        console.warn('Live referrals by UID note:', err);
       });
-      return () => unsub();
+
+      // Also listen by referrerCode if available
+      let unsubCode: (() => void) | null = null;
+      if (user?.referralCode) {
+        const qRefCode = query(collection(db, 'referrals'), where('referrerCode', '==', user.referralCode));
+        unsubCode = onSnapshot(qRefCode, (snap) => {
+          const liveByCode = snap.docs.map(d => ({ ...d.data(), id: d.id })) as ReferralItem[];
+          setReferrals(prev => {
+            const map = new Map<string, ReferralItem>();
+            prev.forEach(item => map.set(item.id, item));
+            liveByCode.forEach(item => map.set(item.id, item));
+            const merged = Array.from(map.values());
+            merged.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            return merged;
+          });
+        }, (err) => {
+          console.warn('Live referrals by Code note:', err);
+        });
+      }
+
+      return () => {
+        unsubUid();
+        if (unsubCode) unsubCode();
+      };
     } catch (e) {
       console.warn('Setup live referrals listener err:', e);
     }
-  }, [user?.uid]);
+  }, [user?.uid, user?.referralCode]);
 
   // Real-time synchronization of Micro Jobs / Offers from Firestore
   useEffect(() => {
@@ -561,14 +652,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           const liveJobs = snap.docs.map(d => ({ ...d.data(), id: d.id })) as MicroJobItem[];
           liveJobs.sort((a, b) => (b.priority || 0) - (a.priority || 0) || (b.createdAt || 0) - (a.createdAt || 0));
           setMicroJobs(liveJobs);
-        } else {
-          // Initialize default micro jobs in Firestore if collection is empty
-          DEFAULT_MICRO_JOBS.forEach((job) => {
-            setDoc(doc(db, 'micro_jobs', job.id), {
-              ...job,
-              createdAtServer: serverTimestamp()
-            }).catch(() => {});
-          });
+          localStorage.setItem('jme_micro_jobs', JSON.stringify(liveJobs));
         }
       }, (err) => {
         console.warn('Live micro jobs listener note:', err);
@@ -603,6 +687,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (!snap.empty) {
           const liveTasks = snap.docs.map(d => ({ ...d.data(), id: d.id })) as TaskItem[];
           setTasks(liveTasks);
+          localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(liveTasks));
         }
       }, (err) => {
         console.warn('Live tasks listener note:', err);
@@ -612,6 +697,98 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.warn('Setup live tasks listener err:', e);
     }
   }, []);
+
+  // Facebook in-app browser & ad watching session check:
+  // Resolves ad rewards even if Facebook browser or mobile tab reloads page after 15 seconds
+  useEffect(() => {
+    const checkAndResolveAdSession = () => {
+      const rawSession = localStorage.getItem('jme_active_ad_session');
+      if (!rawSession || !user) return;
+      try {
+        const session = JSON.parse(rawSession);
+        const elapsed = (Date.now() - session.startTime) / 1000;
+        const required = session.requiredSeconds || 15;
+        
+        if (elapsed >= required) {
+          // Full 15 seconds completed! Give reward even after reload!
+          localStorage.removeItem('jme_active_ad_session');
+          setActiveTaskSession(null);
+          
+          const reward = session.reward || 5;
+          const balanceBefore = user.balance;
+          const balanceAfter = balanceBefore + reward;
+          const updatedUser: UserProfile = {
+            ...user,
+            balance: balanceAfter,
+            todayEarned: (user.todayEarned || 0) + reward,
+            totalEarned: (user.totalEarned || 0) + reward
+          };
+          setUser(updatedUser);
+          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+          
+          const newTxn: TransactionItem = {
+            id: 'txn_' + Date.now(),
+            uid: user.uid,
+            type: 'ad_reward',
+            amount: reward,
+            balanceBefore,
+            balanceAfter,
+            description: `${session.taskTitle} রিওয়ার্ড (১৫ সেকেন্ড সম্পন্ন)`,
+            status: 'completed',
+            createdAt: Date.now()
+          };
+          setTransactions(prev => [newTxn, ...prev]);
+          
+          try {
+            updateDoc(doc(db, 'users', user.uid), {
+              balance: balanceAfter,
+              todayEarned: updatedUser.todayEarned,
+              totalEarned: updatedUser.totalEarned
+            });
+            setDoc(doc(db, 'transactions', newTxn.id), newTxn);
+          } catch (e) {
+            console.warn('Firestore reward save warning:', e);
+          }
+          
+          confetti({
+            particleCount: 50,
+            spread: 60,
+            origin: { y: 0.7 },
+            colors: ['#10B981', '#16A34A', '#86EFAC', '#F59E0B']
+          });
+          
+          showToast(`🎉 অভিনন্দন! ১৫ সেকেন্ড সফলভাবে দেখার জন্য ৳${reward.toFixed(2)} যোগ হয়েছে!`, 'success');
+        } else {
+          // Restore running session in state so timer countdown displays on UI
+          setActiveTaskSession({
+            taskId: session.taskId,
+            startTime: session.startTime,
+            requiredSeconds: required,
+            tabOpened: true,
+            status: 'running'
+          });
+        }
+      } catch (err) {
+        console.warn('Check ad session error:', err);
+      }
+    };
+
+    checkAndResolveAdSession();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndResolveAdSession();
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', checkAndResolveAdSession);
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', checkAndResolveAdSession);
+    };
+  }, [user?.uid]);
 
   // Real-time synchronization of job submissions for admin review
   useEffect(() => {
@@ -794,14 +971,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           const qRef = query(collection(db, 'users'), where('referralCode', '==', effectiveRefCode), limit(1));
           const snapRef = await getDocs(qRef);
           if (!snapRef.empty) {
-            matchingReferrer = snapRef.docs[0].data() as UserProfile;
+            const docData = snapRef.docs[0].data();
+            matchingReferrer = { ...docData, uid: docData.uid || snapRef.docs[0].id } as UserProfile;
+          } else {
+            // Case-insensitive fallback lookup across Firestore users
+            const allUsersSnap = await getDocs(collection(db, 'users'));
+            const foundDoc = allUsersSnap.docs.find(d => {
+              const code = (d.data().referralCode || '').trim().toUpperCase();
+              return code === effectiveRefCode;
+            });
+            if (foundDoc) {
+              const data = foundDoc.data();
+              matchingReferrer = { ...data, uid: data.uid || foundDoc.id } as UserProfile;
+            }
           }
         } catch (fsRefQueryErr) {
           console.warn('Firestore referral lookup error:', fsRefQueryErr);
         }
 
         if (!matchingReferrer) {
-          matchingReferrer = allUsersList.find(u => u.referralCode === effectiveRefCode) || null;
+          matchingReferrer = allUsersList.find(u => (u.referralCode || '').trim().toUpperCase() === effectiveRefCode) || null;
+        }
+
+        // Also check if current device has saved user matching this referral code
+        if (!matchingReferrer) {
+          const savedUserRaw = localStorage.getItem(STORAGE_KEYS.USER);
+          if (savedUserRaw) {
+            try {
+              const savedU = JSON.parse(savedUserRaw);
+              if ((savedU.referralCode || '').trim().toUpperCase() === effectiveRefCode) {
+                matchingReferrer = savedU;
+              }
+            } catch (e) {}
+          }
         }
       }
 
@@ -888,20 +1090,41 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         // Instantly credit referrer in Firestore database with increment(1) on referralCount!
         try {
-          await updateDoc(doc(db, 'users', matchingReferrer.uid), {
+          await setDoc(doc(db, 'users', matchingReferrer.uid), {
             balance: increment(rewardAmount),
             referralEarned: increment(rewardAmount),
             totalEarned: increment(rewardAmount),
             referralCount: increment(1)
-          });
+          }, { merge: true });
           await setDoc(doc(db, 'referrals', refItem.id), {
             ...refItem,
             createdAtServer: serverTimestamp()
-          });
+          }, { merge: true });
           await setDoc(doc(db, 'transactions', refTxn.id), {
             ...refTxn,
             createdAtServer: serverTimestamp()
-          });
+          }, { merge: true });
+
+          // If referrer is currently active in this browser or session, update local state immediately
+          const activeSavedUserRaw = localStorage.getItem(STORAGE_KEYS.USER);
+          if (activeSavedUserRaw) {
+            try {
+              const activeSaved = JSON.parse(activeSavedUserRaw);
+              if (activeSaved.uid === matchingReferrer.uid) {
+                const updatedRefUser: UserProfile = {
+                  ...activeSaved,
+                  balance: (activeSaved.balance || 0) + rewardAmount,
+                  referralEarned: (activeSaved.referralEarned || 0) + rewardAmount,
+                  totalEarned: (activeSaved.totalEarned || 0) + rewardAmount,
+                  referralCount: (activeSaved.referralCount || 0) + 1
+                };
+                localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedRefUser));
+                if (user?.uid === matchingReferrer.uid) {
+                  setUser(updatedRefUser);
+                }
+              }
+            } catch (e) {}
+          }
 
           // Create notification for referrer
           const notifId = 'notif_ref_' + Date.now();
@@ -1234,7 +1457,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return;
     }
     if (user.accountStatus === 'suspended' || user.accountStatus === 'banned') {
-      showToast('আপনার অ্যাকাউন্ট স্থগিত আছে। কাজ করতে পারবেন না।', 'error');
+      showToast('আপনার অ্যাকাউন্ট স্থগিত/ব্যান আছে। কাজ করতে পারবেন না।', 'error');
       return;
     }
 
@@ -1243,6 +1466,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       showToast(`আজকের জন্য এই বিজ্ঞাপনের কাজ সমাপ্ত (${task.dailyLimit}/${task.dailyLimit})। কাল আবার চেষ্টা করুন।`, 'warning');
       return;
     }
+
+    // IMMEDIATELY deduct daily limit on click! (সে দেখুক বা না দেখুক লিমিট মাইনাস হবে)
+    const newCount = todayCount + 1;
+    const updatedUser: UserProfile = {
+      ...user,
+      todayTaskCompletions: {
+        ...(user.todayTaskCompletions || {}),
+        [task.id]: newCount
+      }
+    };
+    setUser(updatedUser);
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+    try {
+      updateDoc(doc(db, 'users', user.uid), {
+        [`todayTaskCompletions.${task.id}`]: newCount
+      }).catch(() => {});
+    } catch (e) {
+      console.warn('Firestore limit deduct note:', e);
+    }
+
+    const now = Date.now();
+    const reqSeconds = task.cooldownSeconds || settings.minimumAdSeconds || 15;
+
+    // Save ad session in localStorage for Facebook in-app browser & reload resilience
+    const sessionObj = {
+      taskId: task.id,
+      taskTitle: task.banglaTitle || task.title,
+      startTime: now,
+      requiredSeconds: reqSeconds,
+      reward: task.reward || settings.adReward || 5,
+      smartLink: task.smartLink,
+      dailyLimit: task.dailyLimit
+    };
+    localStorage.setItem('jme_active_ad_session', JSON.stringify(sessionObj));
 
     // Open smartlink in new window/tab
     try {
@@ -1254,55 +1511,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Start 15-second active session
     setActiveTaskSession({
       taskId: task.id,
-      startTime: Date.now(),
-      requiredSeconds: settings.minimumAdSeconds || 15,
+      startTime: now,
+      requiredSeconds: reqSeconds,
       tabOpened: true,
       status: 'running'
     });
 
-    showToast(`বিজ্ঞাপন লোড হচ্ছে... কমপক্ষে ১৫ সেকেন্ড অপেক্ষা করুন!`, 'info');
+    showToast(`বিজ্ঞাপন দেখা শুরু হয়েছে... পুরো ১৫ সেকেন্ড অবস্থান করুন!`, 'info');
   };
 
   // Complete active task when timer finishes
   const completeActiveTask = () => {
     if (!activeTaskSession || !user) return;
     const task = tasks.find(t => t.id === activeTaskSession.taskId);
-    if (!task) {
-      setActiveTaskSession(null);
-      return;
-    }
-
     const elapsed = (Date.now() - activeTaskSession.startTime) / 1000;
+    
     if (elapsed < activeTaskSession.requiredSeconds - 0.5) {
       // Early return fraud check!
+      localStorage.removeItem('jme_active_ad_session');
       setActiveTaskSession(null);
       setEarlyReturnWarning(true);
-      showToast('❌ কাজ বাতিল! আপনি ১৫ সেকেন্ড শেষ হওয়ার পূর্বেই ফিরে এসেছেন।', 'error');
+      showToast('❌ কাজ বাতিল! আপনি ১৫ সেকেন্ড শেষ হওয়ার পূর্বেই ফিরে এসেছেন (দৈনিক কাজের লিমিট ১টি মাইনাস হয়েছে)।', 'error');
       return;
     }
 
-    // Check daily limit again
-    const currentCount = user.todayTaskCompletions?.[task.id] || 0;
-    if (currentCount >= task.dailyLimit) {
-      setActiveTaskSession(null);
-      showToast('আজকের এই টাস্কের সীমা আগেই পূর্ণ হয়েছে।', 'warning');
-      return;
-    }
-
-    const reward = task.reward || settings.adReward || 5;
-    const newCount = currentCount + 1;
+    localStorage.removeItem('jme_active_ad_session');
+    const reward = (task ? task.reward : 5) || settings.adReward || 5;
     const balanceBefore = user.balance;
     const balanceAfter = balanceBefore + reward;
 
     const updatedUser: UserProfile = {
       ...user,
       balance: balanceAfter,
-      todayEarned: user.todayEarned + reward,
-      totalEarned: user.totalEarned + reward,
-      todayTaskCompletions: {
-        ...(user.todayTaskCompletions || {}),
-        [task.id]: newCount
-      }
+      todayEarned: (user.todayEarned || 0) + reward,
+      totalEarned: (user.totalEarned || 0) + reward
     };
 
     const newTxn: TransactionItem = {
@@ -1312,7 +1554,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       amount: reward,
       balanceBefore,
       balanceAfter,
-      description: `${task.banglaTitle} রিওয়ার্ড (${newCount}/${task.dailyLimit})`,
+      description: `${task ? (task.banglaTitle || task.title) : 'বিজ্ঞাপন'} রিওয়ার্ড (১৫ সেকেন্ড সম্পন্ন)`,
       status: 'completed',
       createdAt: Date.now()
     };
@@ -1322,14 +1564,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       updateDoc(doc(db, 'users', user.uid), {
         balance: balanceAfter,
         todayEarned: updatedUser.todayEarned,
-        totalEarned: updatedUser.totalEarned,
-        [`todayTaskCompletions.${task.id}`]: newCount
-      });
+        totalEarned: updatedUser.totalEarned
+      }).catch(() => {});
+      setDoc(doc(db, 'transactions', newTxn.id), newTxn).catch(() => {});
     } catch (e) {
       console.warn('Firestore update warning:', e);
     }
 
     setUser(updatedUser);
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
     setTransactions(prev => [newTxn, ...prev]);
     setActiveTaskSession(null);
 
@@ -1345,8 +1588,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const cancelActiveTask = () => {
+    localStorage.removeItem('jme_active_ad_session');
     setActiveTaskSession(null);
-    showToast('টাস্ক বাতিল করা হয়েছে।', 'info');
+    showToast('টাস্ক বাতিল করা হয়েছে। ১৫ সেকেন্ড অপেক্ষা না করায় রিওয়ার্ড পাননি (কিন্তু লিমিট মাইনাস হয়েছে)।', 'warning');
   };
 
   // Request Withdrawal
@@ -1357,6 +1601,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   ): Promise<{ success: boolean; error?: string }> => {
     if (!user) return { success: false, error: 'অনুগ্রহ করে প্রথমে লগইন করুন।' };
     if (user.accountStatus !== 'active') return { success: false, error: 'আপনার অ্যাকাউন্ট সক্রিয় নয়।' };
+
+    // 500-1000 Tk random budget verification security fee check (৫০ টাকা ভেরিফিকেশন ফি)
+    const verificationThreshold = settings.minBalanceForVerification || 500;
+    if ((amount >= verificationThreshold || user.balance >= verificationThreshold) && !user.isSecurityVerified) {
+      return {
+        success: false,
+        error: `আপনার ব্যালেন্স ৳${verificationThreshold}-১০০০ পূরণ হয়েছে! ফেক ট্রাফিক প্রতিরোধে প্রথমবার উত্তোলনের জন্য ৫০ টাকা সিকিউরিটি ভেরিফিকেশন সম্পন্ন করা আবশ্যক।`
+      };
+    }
 
     if (amount < settings.minWithdrawal) {
       return { success: false, error: `সর্বনিম্ন উত্তোলনের পরিমাণ ৳${settings.minWithdrawal}` };
@@ -1691,6 +1944,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!user) return { success: false, message: 'প্রথমে লগইন করুন' };
 
     const newId = 'sub_' + Date.now();
+    const isSubscribeTask = 
+      data.jobTitle.includes('সাবস্ক্রাইব') || 
+      data.jobTitle.toLowerCase().includes('subscribe') || 
+      data.jobId.includes('subscribe') || 
+      data.jobId.includes('telegram');
+
+    const hasProofScreenshot = Boolean(data.startScreenshotUrl || data.endScreenshotUrl);
+    // Smart AI Auto-Approval for channel subscribe tasks (ইউটিউব ও টেলিগ্রাম সাবস্ক্রাইব নিজে থেকেই ভেরিফাই হয়ে টাকা জমা হবে)
+    const shouldAutoApprove = isSubscribeTask && hasProofScreenshot;
+    const finalStatus = shouldAutoApprove ? 'approved' : 'pending';
+    const adminNote = shouldAutoApprove ? 'AI Auto-Approved (স্মার্ট এআই দ্বারা স্বয়ংক্রিয় ভেরিফাইড)' : undefined;
+
     const submission: JobSubmissionItem = {
       id: newId,
       jobId: data.jobId,
@@ -1704,33 +1969,197 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       spentSeconds: data.spentSeconds,
       proofText: data.proofText,
       reward: data.reward,
-      status: 'pending',
+      status: finalStatus,
+      adminNote,
       aiAnalytics: data.aiAnalytics,
       submittedAt: Date.now()
     };
 
     try {
-      await setDoc(doc(db, 'job_submissions', newId), {
-        ...submission,
-        createdAtServer: serverTimestamp()
-      });
+      try {
+        await setDoc(doc(db, 'job_submissions', newId), {
+          ...submission,
+          createdAtServer: serverTimestamp()
+        }, { merge: true });
+      } catch (subErr) {
+        console.warn('Firestore submission save warning:', subErr);
+      }
 
       // Update local submissions list state as well
       setJobSubmissions(prev => [submission, ...prev.filter(s => s.id !== newId)]);
 
-      // Mark completed for today in user's profile
-      await updateDoc(doc(db, 'users', user.uid), {
-        [`completedMicroJobs.${data.jobId}`]: Date.now()
-      });
+      let updatedUserObj: UserProfile = {
+        ...user,
+        completedMicroJobs: { ...(user.completedMicroJobs || {}), [data.jobId]: Date.now() }
+      };
 
-      setUser(prev => prev ? {
-        ...prev,
-        completedMicroJobs: { ...(prev.completedMicroJobs || {}), [data.jobId]: Date.now() }
-      } : null);
+      // If Auto-Approved by AI, immediately credit reward to user's balance!
+      if (shouldAutoApprove) {
+        const rewardAmount = data.reward || 20;
+        const balanceBefore = user.balance;
+        const balanceAfter = balanceBefore + rewardAmount;
+        
+        updatedUserObj = {
+          ...updatedUserObj,
+          balance: balanceAfter,
+          todayEarned: (user.todayEarned || 0) + rewardAmount,
+          totalEarned: (user.totalEarned || 0) + rewardAmount
+        };
 
-      return { success: true };
+        const newTxn: TransactionItem = {
+          id: 'txn_sub_' + Date.now(),
+          uid: user.uid,
+          type: 'ad_reward',
+          amount: rewardAmount,
+          balanceBefore,
+          balanceAfter,
+          description: `${data.jobTitle} (এআই স্বয়ংক্রিয় অনুমোদন)`,
+          status: 'completed',
+          createdAt: Date.now()
+        };
+        setTransactions(prev => [newTxn, ...prev]);
+
+        // Save safely with setDoc { merge: true } so "No document to update" error NEVER happens!
+        try {
+          await setDoc(doc(db, 'users', user.uid), {
+            ...updatedUserObj,
+            [`completedMicroJobs.${data.jobId}`]: Date.now()
+          }, { merge: true });
+          await setDoc(doc(db, 'transactions', newTxn.id), newTxn, { merge: true });
+        } catch (fsSaveErr) {
+          console.warn('Firestore reward save warning:', fsSaveErr);
+        }
+
+        confetti({
+          particleCount: 60,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } else {
+        // Save micro job completion timestamp with merge: true
+        try {
+          await setDoc(doc(db, 'users', user.uid), {
+            [`completedMicroJobs.${data.jobId}`]: Date.now()
+          }, { merge: true });
+        } catch (fsCompErr) {
+          console.warn('Firestore completion mark note:', fsCompErr);
+        }
+      }
+
+      setUser(updatedUserObj);
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUserObj));
+
+      return { 
+        success: true, 
+        message: shouldAutoApprove 
+          ? `🎉 এআই সফলভাবে সাবস্ক্রিপশন ভেরিফাই করেছে! ৳${data.reward || 20} ব্যালেন্সে যোগ হয়েছে।` 
+          : 'প্রমাণ সফলভাবে জমা হয়েছে এবং এআই দ্বারা প্রসেস করা হয়েছে।'
+      };
     } catch (e: any) {
-      return { success: false, message: e.message };
+      console.error('Submit job proof error:', e);
+      return { success: false, message: e.message || 'সাবমিট করতে সমস্যা হয়েছে' };
+    }
+  };
+
+  // Bind Referral Code after registration
+  const bindReferralCode = async (refCode: string): Promise<{ success: boolean; message: string }> => {
+    if (!user) return { success: false, message: 'প্রথমে লগইন করুন' };
+    const cleanCode = refCode.trim().toUpperCase();
+    if (!cleanCode) return { success: false, message: 'সঠিক রেফারেল কোড লিখুন' };
+    if (user.referredBy) return { success: false, message: 'আপনি ইতিমধ্যে রেফার কোড ব্যবহার করেছেন' };
+    if (cleanCode === (user.referralCode || '').toUpperCase()) {
+      return { success: false, message: 'নিজের রেফারেল কোড নিজে ব্যবহার করা যাবে না' };
+    }
+
+    try {
+      let matchingReferrer: UserProfile | null = null;
+      const qRef = query(collection(db, 'users'), where('referralCode', '==', cleanCode), limit(1));
+      const snapRef = await getDocs(qRef);
+      if (!snapRef.empty) {
+        const docData = snapRef.docs[0].data();
+        matchingReferrer = { ...docData, uid: docData.uid || snapRef.docs[0].id } as UserProfile;
+      } else {
+        const allUsersSnap = await getDocs(collection(db, 'users'));
+        const foundDoc = allUsersSnap.docs.find(d => {
+          const code = (d.data().referralCode || '').trim().toUpperCase();
+          return code === cleanCode;
+        });
+        if (foundDoc) {
+          const data = foundDoc.data();
+          matchingReferrer = { ...data, uid: data.uid || foundDoc.id } as UserProfile;
+        }
+      }
+
+      if (!matchingReferrer) {
+        matchingReferrer = allUsersList.find(u => (u.referralCode || '').trim().toUpperCase() === cleanCode) || null;
+      }
+
+      if (!matchingReferrer) {
+        return { success: false, message: 'রেফারেল কোডটি সঠিক নয় বা সিস্টেমে পাওয়া যায়নি' };
+      }
+
+      const rewardAmount = settings.referralReward || 50;
+
+      const refItem: ReferralItem = {
+        id: 'ref_' + Date.now(),
+        referrerUid: matchingReferrer.uid,
+        referrerCode: matchingReferrer.referralCode,
+        referredUid: user.uid,
+        referredName: user.name,
+        referredPhoneMasked: user.phone ? (user.phone.slice(0, 3) + '****' + user.phone.slice(-3)) : '017****',
+        rewardAmount,
+        status: 'completed',
+        createdAt: Date.now()
+      };
+
+      const refTxn: TransactionItem = {
+        id: 'txn_ref_' + Date.now(),
+        uid: matchingReferrer.uid,
+        type: 'referral_reward',
+        amount: rewardAmount,
+        balanceBefore: matchingReferrer.balance,
+        balanceAfter: matchingReferrer.balance + rewardAmount,
+        description: `রেফারেল বোনাস (${user.name})`,
+        status: 'completed',
+        createdAt: Date.now()
+      };
+
+      // Update referrer in Firestore safely
+      await setDoc(doc(db, 'users', matchingReferrer.uid), {
+        balance: increment(rewardAmount),
+        referralEarned: increment(rewardAmount),
+        totalEarned: increment(rewardAmount),
+        referralCount: increment(1)
+      }, { merge: true });
+
+      await setDoc(doc(db, 'referrals', refItem.id), {
+        ...refItem,
+        createdAtServer: serverTimestamp()
+      }, { merge: true });
+
+      await setDoc(doc(db, 'transactions', refTxn.id), {
+        ...refTxn,
+        createdAtServer: serverTimestamp()
+      }, { merge: true });
+
+      // Update current user
+      const updatedUser: UserProfile = {
+        ...user,
+        referredBy: cleanCode,
+        referredByUid: matchingReferrer.uid
+      };
+      await setDoc(doc(db, 'users', user.uid), {
+        referredBy: cleanCode,
+        referredByUid: matchingReferrer.uid
+      }, { merge: true });
+
+      setUser(updatedUser);
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+      setReferrals(prev => [refItem, ...prev]);
+
+      return { success: true, message: `🎉 রেফারেল কোড সফলভাবে যুক্ত হয়েছে! রেফারারকে ৳${rewardAmount} বোনাস যোগ হয়েছে।` };
+    } catch (e: any) {
+      return { success: false, message: e.message || 'রেফার কোড যুক্ত করতে সমস্যা হয়েছে' };
     }
   };
 
@@ -1988,6 +2417,169 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast(`ইউজারের স্ট্যাটাস '${status === 'active' ? 'সক্রিয়' : 'স্থগিত'}' করা হয়েছে।`, 'info');
   };
 
+  // Comprehensive Admin User Status & Ban/Warning Control
+  const adminSetUserStatus = async (
+    uid: string, 
+    status: 'active' | 'under_review' | 'suspended' | 'banned', 
+    reason?: string
+  ): Promise<void> => {
+    try {
+      const updateData: any = { accountStatus: status };
+      if (status === 'under_review' || status === 'suspended') {
+        updateData.warningNote = reason || 'সতর্কবার্তা: ফেক কাজ বা নিয়ম লঙ্ঘন';
+      } else if (status === 'banned') {
+        updateData.bannedReason = reason || 'অ্যাকাউন্ট স্থায়ীভাবে ব্যান করা হয়েছে';
+      } else {
+        updateData.warningNote = null;
+        updateData.bannedReason = null;
+      }
+
+      setAllUsersList(prev => prev.map(u => u.uid === uid ? { ...u, ...updateData } : u));
+      if (user && user.uid === uid) {
+        setUser(prev => prev ? { ...prev, ...updateData } : null);
+      }
+
+      await updateDoc(doc(db, 'users', uid), updateData);
+
+      const notifId = 'notif_status_' + Date.now();
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        uid,
+        title: status === 'banned' ? '🚫 অ্যাকাউন্ট ব্যান করা হয়েছে' : status === 'active' ? '✅ অ্যাকাউন্ট সক্রিয়' : '⚠️ অ্যাকাউন্ট সতর্কবার্তা',
+        message: status === 'banned' 
+          ? `আপনার অ্যাকাউন্ট ব্যান করা হয়েছে। কারণ: ${reason || 'নীতিমালা লঙ্ঘন'}`
+          : status === 'active' 
+          ? 'আপনার অ্যাকাউন্ট সফলভাবে সক্রিয় করা হয়েছে।'
+          : `সতর্কবার্তা: ${reason || 'সঠিকভাবে কাজ করুন, অন্যথায় অ্যাকাউন্ট ব্যান হবে।'}`,
+        type: status === 'banned' || status === 'suspended' ? 'warning' : 'info',
+        read: false,
+        createdAt: Date.now()
+      });
+
+      showToast(`ইউজার স্ট্যাটাস '${status}' সফলভাবে সংরক্ষিত হয়েছে!`, 'success');
+    } catch (e: any) {
+      showToast('স্ট্যাটাস আপডেট ব্যর্থ: ' + e.message, 'error');
+    }
+  };
+
+  // Comprehensive Admin User Balance Adjust (+ / -)
+  const adminAdjustUserBalance = async (uid: string, delta: number, reason: string): Promise<void> => {
+    try {
+      const targetUser = allUsersList.find(u => u.uid === uid) || (user?.uid === uid ? user : null);
+      if (!targetUser) return;
+
+      const newBalance = Math.max(0, targetUser.balance + delta);
+      setAllUsersList(prev => prev.map(u => u.uid === uid ? { ...u, balance: newBalance } : u));
+      if (user && user.uid === uid) {
+        setUser(prev => prev ? { ...prev, balance: newBalance } : null);
+      }
+
+      const txnId = 'txn_adj_' + Date.now();
+      const newTxn: TransactionItem = {
+        id: txnId,
+        uid,
+        type: delta >= 0 ? 'ad_reward' : 'withdrawal',
+        amount: delta,
+        balanceBefore: targetUser.balance,
+        balanceAfter: newBalance,
+        description: `অ্যাডমিন সমন্বয়: ${reason}`,
+        status: 'completed',
+        createdAt: Date.now()
+      };
+
+      await updateDoc(doc(db, 'users', uid), { 
+        balance: newBalance,
+        ...(delta > 0 ? { totalEarned: (targetUser.totalEarned || 0) + delta } : {})
+      });
+      await setDoc(doc(db, 'transactions', txnId), newTxn);
+
+      const notifId = 'notif_bal_' + Date.now();
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        uid,
+        title: delta >= 0 ? '💰 ব্যালেন্স যোগ হয়েছে' : '🔻 ব্যালেন্স সমন্বয়',
+        message: `আপনার অ্যাকাউন্টে ৳${Math.abs(delta)} ${delta >= 0 ? 'যোগ' : 'কর্তন'} করা হয়েছে। কারণ: ${reason}`,
+        type: delta >= 0 ? 'reward' : 'warning',
+        read: false,
+        createdAt: Date.now()
+      });
+
+      showToast(`ব্যালেন্স সমন্বয় সফল (${delta >= 0 ? '+' : ''}৳${delta})!`, 'success');
+    } catch (err: any) {
+      showToast('ব্যালেন্স আপডেট করতে ব্যর্থ: ' + err.message, 'error');
+    }
+  };
+
+  // Request Security Verification (৫০ টাকা ফি দিয়ে ৫০০-১০০০ ব্যালেন্স ভেরিফিকেশন)
+  const requestSecurityVerification = async (method: string, trxId: string): Promise<{ success: boolean; message?: string }> => {
+    if (!user) return { success: false, message: 'প্রথমে লগইন করুন' };
+    try {
+      const updates = {
+        securityVerificationRequested: true,
+        securityVerificationTrxId: trxId,
+        securityVerificationMethod: method,
+        securityVerificationAt: Date.now()
+      };
+      await updateDoc(doc(db, 'users', user.uid), updates);
+      setUser(prev => prev ? { ...prev, ...updates } : null);
+      showToast('🎉 ৫০ টাকা সিকিউরিটি ভেরিফিকেশন তথ্য জমা হয়েছে! অ্যাডমিন যাচাই করে অনুমোদন করবেন।', 'success');
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  };
+
+  // Admin Approve Security Verification
+  const adminApproveSecurityVerification = async (userId: string): Promise<void> => {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        isSecurityVerified: true,
+        securityVerificationRequested: false
+      });
+      setAllUsersList(prev => prev.map(u => u.uid === userId ? { ...u, isSecurityVerified: true, securityVerificationRequested: false } : u));
+      if (user && user.uid === userId) {
+        setUser(prev => prev ? { ...prev, isSecurityVerified: true, securityVerificationRequested: false } : null);
+      }
+      showToast('ইউজারের সিকিউরিটি ভেরিফিকেশন অনুমোদিত হয়েছে!', 'success');
+    } catch (e: any) {
+      showToast('ভেরিফিকেশন অনুমোদন ব্যর্থ: ' + e.message, 'error');
+    }
+  };
+
+  // Unlimited YouTube Tutorials & Waz Video Management
+  const adminAddYouTubeTutorial = async (tutorial: Omit<YouTubeTutorialItem, 'id' | 'createdAt'>): Promise<void> => {
+    const newItem: YouTubeTutorialItem = {
+      ...tutorial,
+      id: 'yt_' + Date.now(),
+      createdAt: Date.now()
+    };
+    const currentList = settings.youtubeTutorialsList || [];
+    const updatedList = [newItem, ...currentList];
+    adminUpdateSettings({ youtubeTutorialsList: updatedList });
+    showToast('নতুন ইউটিউব ভিডিও টিউটোরিয়াল যুক্ত হয়েছে!', 'success');
+  };
+
+  const adminUpdateYouTubeTutorial = async (id: string, updates: Partial<YouTubeTutorialItem>): Promise<void> => {
+    const currentList = settings.youtubeTutorialsList || [];
+    const updatedList = currentList.map(item => item.id === id ? { ...item, ...updates } : item);
+    adminUpdateSettings({ youtubeTutorialsList: updatedList });
+    showToast('টিউটোরিয়াল আপডেট করা হয়েছে!', 'success');
+  };
+
+  const adminDeleteYouTubeTutorial = async (id: string): Promise<void> => {
+    const currentList = settings.youtubeTutorialsList || [];
+    const updatedList = currentList.filter(item => item.id !== id);
+    adminUpdateSettings({ youtubeTutorialsList: updatedList });
+    showToast('টিউটোরিয়াল ডিলিট করা হয়েছে!', 'info');
+  };
+
+  const adminToggleYouTubeTutorialActive = async (id: string): Promise<void> => {
+    const currentList = settings.youtubeTutorialsList || [];
+    const updatedList = currentList.map(item => item.id === id ? { ...item, active: !item.active } : item);
+    adminUpdateSettings({ youtubeTutorialsList: updatedList });
+    showToast('টিউটোরিয়াল স্ট্যাটাস পরিবর্তন হয়েছে!', 'info');
+  };
+
   const adminUpdateWithdrawalStatus = async (
     id: string, 
     status: 'approved' | 'paid' | 'rejected' | 'processing', 
@@ -2207,6 +2799,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         startTask,
         completeActiveTask,
         cancelActiveTask,
+        bindReferralCode,
         requestWithdrawal,
         spinWheel,
         claimWelcomeBonus,
@@ -2230,7 +2823,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         adminUpdateMicroJob,
         adminDeleteMicroJob,
         adminUpdateUserBalance,
+        adminAdjustUserBalance,
         adminToggleUserStatus,
+        adminSetUserStatus,
+        requestSecurityVerification,
+        adminApproveSecurityVerification,
+        adminAddYouTubeTutorial,
+        adminUpdateYouTubeTutorial,
+        adminDeleteYouTubeTutorial,
+        adminToggleYouTubeTutorialActive,
         adminUpdateWithdrawalStatus,
         adminUpdateTask,
         adminAddTask,

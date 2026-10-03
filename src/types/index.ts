@@ -25,7 +25,23 @@ export interface UserProfile {
   verificationRequested?: boolean;
   verificationTrxId?: string;
   verificationMethod?: string;
+  isSecurityVerified?: boolean; // 50 Tk random 500-1000 Tk withdrawal verification
+  securityVerificationRequested?: boolean;
+  securityVerificationTrxId?: string;
+  securityVerificationMethod?: string;
+  warningNote?: string; // Admin warning
+  bannedReason?: string; // Reason for account ban
   photoURL?: string; // Custom profile logo/avatar compressed under 100KB
+  verificationThreshold?: number; // Random 500-1000 Tk budget threshold
+}
+
+export interface YouTubeTutorialItem {
+  id: string;
+  title: string;
+  url: string;
+  reward?: number;
+  active: boolean;
+  createdAt?: number;
 }
 
 export interface AIAnalyticsReport {
@@ -186,6 +202,9 @@ export interface AppSettings {
   cpmRate?: number; // Primary CPM rate display e.g. 0.3
   showMicroJobsSection?: boolean; // Toggle micro jobs section
   showLivePayoutTicker?: boolean; // Toggle live payout ticker
+  youtubeTutorialsList?: YouTubeTutorialItem[]; // Unlimited YouTube tutorials list
+  securityVerificationFee?: number; // ৳50 security fee
+  minBalanceForVerification?: number; // ৳500-1000 threshold
 }
 
 export interface ContactMessageItem {

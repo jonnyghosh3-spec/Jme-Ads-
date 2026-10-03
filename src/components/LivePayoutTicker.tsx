@@ -1,99 +1,67 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, X } from 'lucide-react';
 import { BkashLogo, NagadLogo } from './Icons';
-
-interface LivePayout {
-  name: string;
-  phone: string;
-  amount: number;
-  method: 'bKash' | 'Nagad';
-}
-
-// 100+ authentic Bangladeshi names (mostly Muslim with authentic Hindu names as well)
-const BANGLA_NAMES = [
-  'Md. Shakil Khan', 'Arif Hossain', 'Tanvir Ahmed', 'Nusrat Jahan', 'Farhana Akter',
-  'Sabbir Rahman', 'Nahidul Islam', 'Rifat Hasan', 'Mehedi Hasan', 'Jannatul Ferdous',
-  'Kamrul Hassan', 'Rakib Sheikh', 'Shoriful Islam', 'Sadia Afrin', 'Imran Hossain',
-  'Rubel Mia', 'Shohel Rana', 'Fatema Tuz Zohra', 'Sharmin Sultana', 'Al-Amin Mia',
-  'Ashiqur Rahman', 'Shahadat Hossain', 'Mahmudul Hasan', 'Sumon Mia', 'Mizanur Rahman',
-  'Abdur Rahim', 'Hasibul Islam', 'Biplob Hossain', 'Rokibul Islam', 'Khadija Begum',
-  'Fahim Montasir', 'Taslima Khatun', 'Saiful Islam', 'Nurul Amin', 'Jahidul Islam',
-  'Asif Mahmud', 'Hasan Al Mamun', 'Shahinur Rahman', 'Mustafizur Rahman', 'Pori Moni',
-  'Maruf Billah', 'Sajjad Hossain', 'Sonia Akter', 'Nazmul Huda', 'Zubair Ahmed',
-  'Priya Dhar', 'Subhash Roy', 'Anik Saha', 'Biplob Kumar Ghosh', 'Polash Chandra',
-  'Soumya Sarkar', 'Liton Das', 'Khokon Chandra', 'Dipu Moni', 'Shanto Islam',
-  'Rasel Mia', 'Noman Ali', 'Sazzad Karim', 'Mitu Akter', 'Shafiqul Islam',
-  'Golam Rabbani', 'Monir Hossain', 'Sharif Uddin', 'Sujan Ahmed', 'Shariful Raj',
-  'Tamim Iqbal', 'Mustafiz Mia', 'Habibur Rahman', 'Rezaul Karim', 'Tariqul Islam',
-  'Anwar Hossain', 'Masud Rana', 'Helal Uddin', 'Babul Mia', 'Delwar Hossain',
-  'Abdul Mannan', 'Nasimul Gani', 'Faruk Ahmed', 'Shamim Reza', 'Shakib Al Hasan',
-  'Mushfiqur Rahim', 'Mahmudullah Riyad', 'Nasir Hossain', 'Taskin Ahmed', 'Ebadot Hossain',
-  'Shoriful Islam', 'Afif Hossain', 'Towhid Hridoy', 'Mehidy Hasan Miraz', 'Najmul Hossain',
-  'Zakir Hasan', 'Nurul Hasan Sohan', 'Taijul Islam', 'Khaled Ahmed', 'Shamim Hossain',
-  'Rishad Hossain', 'Tanzid Hasan', 'Tanzim Sakib', 'Jisan Mia', 'Mashrafe Mortaza'
-];
-
-const PAYOUT_AMOUNTS = [1000, 1200, 1500, 2000, 2500, 3000, 3500, 5000];
-const OPERATORS = ['017', '018', '019', '016', '013', '014'];
+import { useApp } from '../context/AppContext';
 
 export const LivePayoutTicker: React.FC = () => {
-  const [currentPayout, setCurrentPayout] = useState<LivePayout | null>(null);
+  const { withdrawals, settings } = useApp();
+  const [currentPayout, setCurrentPayout] = useState<{
+    phone: string;
+    amount: number;
+    method: string;
+  } | null>(null);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
+  // Filter only real approved or paid withdrawals from database
+  const realApprovedWithdrawals = (withdrawals || []).filter(
+    w => w.status === 'approved' || w.status === 'paid'
+  );
+
   useEffect(() => {
+    // If admin disabled ticker or there are no real approved withdrawals, do not display fake names
+    if (settings.showLivePayoutTicker === false || realApprovedWithdrawals.length === 0) {
+      setCurrentPayout(null);
+      return;
+    }
+
+    let currentIndex = 0;
     let hideTimer: NodeJS.Timeout;
     let nextTimer: NodeJS.Timeout;
 
-    // Show a new payout message, keep it for 4.5 seconds with shrink progress line, then animate out
-    const showNewPayout = () => {
-      const randomName = BANGLA_NAMES[Math.floor(Math.random() * BANGLA_NAMES.length)];
-      const randomAmount = PAYOUT_AMOUNTS[Math.floor(Math.random() * PAYOUT_AMOUNTS.length)];
-      const randomMethod: 'bKash' | 'Nagad' = Math.random() > 0.45 ? 'bKash' : 'Nagad';
-      const op = OPERATORS[Math.floor(Math.random() * OPERATORS.length)];
-      const lastDigits = Math.floor(10 + Math.random() * 90);
-      const maskedPhone = `${op}****${lastDigits}`;
+    const showNextRealPayout = () => {
+      if (realApprovedWithdrawals.length === 0) return;
+      const w = realApprovedWithdrawals[currentIndex % realApprovedWithdrawals.length];
+      currentIndex++;
+
+      const maskedPhone = w.accountNumber 
+        ? (w.accountNumber.slice(0, 3) + '****' + w.accountNumber.slice(-3))
+        : '017****';
 
       setCurrentPayout({
-        name: randomName,
         phone: maskedPhone,
-        amount: randomAmount,
-        method: randomMethod
+        amount: w.amount,
+        method: w.method || 'bKash'
       });
       setIsAnimatingOut(false);
 
-      // Duration visible: 4.5s
       hideTimer = setTimeout(() => {
         setIsAnimatingOut(true);
-        // Wait for exit animation to complete, then clear message and pause before next one
         setTimeout(() => {
           setCurrentPayout(null);
           setIsAnimatingOut(false);
-
-          // 5 messages per minute = 60s / 5 = ~12s cycle total
-          // (4.5s display + 0.4s fade + ~7s idle pause between notifications)
-          const pauseBetween = 6500 + Math.floor(Math.random() * 2000);
-          nextTimer = setTimeout(showNewPayout, pauseBetween);
+          nextTimer = setTimeout(showNextRealPayout, 8000);
         }, 400);
       }, 4500);
     };
 
-    // First trigger after 3 seconds on page
-    const initialTimer = setTimeout(showNewPayout, 3000);
+    const initialTimer = setTimeout(showNextRealPayout, 4000);
 
     return () => {
       clearTimeout(initialTimer);
       clearTimeout(hideTimer);
       clearTimeout(nextTimer);
     };
-  }, []);
-
-  const handleDismiss = () => {
-    setIsAnimatingOut(true);
-    setTimeout(() => {
-      setCurrentPayout(null);
-      setIsAnimatingOut(false);
-    }, 300);
-  };
+  }, [realApprovedWithdrawals.length, settings.showLivePayoutTicker]);
 
   if (!currentPayout) return null;
 
@@ -109,27 +77,24 @@ export const LivePayoutTicker: React.FC = () => {
         
         {/* Method Logo */}
         <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0 p-1 border border-white/15">
-          {currentPayout.method === 'bKash' ? (
+          {currentPayout.method.toLowerCase().includes('bkash') ? (
             <BkashLogo className="w-7 h-7 object-contain" />
           ) : (
             <NagadLogo className="w-7 h-7 object-contain" />
           )}
         </div>
 
-        {/* Details with Name, Masked Mobile Number, Amount */}
+        {/* Details with Real Masked Mobile Number & Amount */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-bold text-[11px] text-emerald-300 truncate max-w-[140px]">
-              {currentPayout.name}
-            </span>
-            <span className="text-[10px] text-gray-300 font-mono font-semibold tracking-wide">
-              ({currentPayout.phone})
+            <span className="font-bold text-[11px] text-emerald-300 font-mono">
+              {currentPayout.phone}
             </span>
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
           </div>
 
           <div className="text-[10px] text-gray-300 flex items-center gap-1 mt-0.5">
-            <span>উত্তোলন সফল:</span>
+            <span>উত্তোলন অনুমোদিত:</span>
             <strong className="text-amber-400 font-english font-bold">
               ৳{currentPayout.amount.toLocaleString()}
             </strong>
@@ -137,19 +102,13 @@ export const LivePayoutTicker: React.FC = () => {
           </div>
         </div>
 
-        {/* Close / Dismiss Button */}
+        {/* Close Button */}
         <button
-          onClick={handleDismiss}
-          className="absolute top-2.5 right-2 p-1 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-          title="বন্ধ করুন"
+          onClick={() => setCurrentPayout(null)}
+          className="absolute right-2 top-2 p-1 text-gray-400 hover:text-white rounded-lg transition-colors cursor-pointer"
         >
           <X className="w-3.5 h-3.5" />
         </button>
-
-        {/* Shrinking Animated Progress Line at the Top (from 100% to 0%) */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-emerald-400 to-green-300 animate-toast-progress" />
-        </div>
       </div>
     </div>
   );

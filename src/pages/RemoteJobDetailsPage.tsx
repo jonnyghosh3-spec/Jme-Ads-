@@ -39,10 +39,16 @@ export const RemoteJobDetailsPage: React.FC<{
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submittedAiReport, setSubmittedAiReport] = useState<AIAnalyticsReport | null>(null);
 
+  const isSubscribeJob = 
+    job.category === 'subscribe' || 
+    job.title.includes('সাবস্ক্রাইব') || 
+    job.id.includes('subscribe') || 
+    job.id.includes('telegram');
+
   const isVerified = user?.isVerifiedPublisher;
   const rewardAmount = isVerified ? (job.reward * 2) : job.reward;
-  const requiredSeconds = job.requiredDurationSeconds || 60;
-  const isTimeComplete = secondsSpent >= requiredSeconds;
+  const requiredSeconds = isSubscribeJob ? 5 : (job.requiredDurationSeconds || 60);
+  const isTimeComplete = isSubscribeJob ? true : (secondsSpent >= requiredSeconds);
 
   // Active Timer Tracker (Robot Engineering Simulation)
   useEffect(() => {
@@ -102,21 +108,31 @@ export const RemoteJobDetailsPage: React.FC<{
       return;
     }
 
-    if (!startScreenshot || !endScreenshot) {
-      showToast('ভিডিওর শুরু এবং শেষের ২টি স্ক্রিনশটই আপলোড করা বাধ্যতামূলক!', 'error');
-      return;
+    if (isSubscribeJob) {
+      if (!startScreenshot && !endScreenshot) {
+        showToast('সাবস্ক্রাইব করার প্রমাণ হিসেবে ১টি স্ক্রিনশট আপলোড করা বাধ্যতামূলক!', 'error');
+        return;
+      }
+    } else {
+      if (!startScreenshot || !endScreenshot) {
+        showToast('ভিডিওর শুরু এবং শেষের ২টি স্ক্রিনশটই আপলোড করা বাধ্যতামূলক!', 'error');
+        return;
+      }
     }
+
+    const proofImg1 = startScreenshot || endScreenshot || '';
+    const proofImg2 = isSubscribeJob ? proofImg1 : (endScreenshot || '');
 
     setIsSubmitting(true);
     try {
       // Run Automated AI Analytics Engine
       const aiReport = await analyzeJobProof({
-        requiredSeconds,
-        spentSeconds: secondsSpent,
-        startScreenshotUrl: startScreenshot,
-        endScreenshotUrl: endScreenshot,
-        startSizeKb,
-        endSizeKb,
+        requiredSeconds: isSubscribeJob ? 5 : requiredSeconds,
+        spentSeconds: Math.max(15, secondsSpent),
+        startScreenshotUrl: proofImg1,
+        endScreenshotUrl: proofImg2,
+        startSizeKb: startSizeKb || endSizeKb,
+        endSizeKb: endSizeKb || startSizeKb,
         proofText: proofNote.trim()
       });
 
@@ -125,10 +141,10 @@ export const RemoteJobDetailsPage: React.FC<{
       const res = await submitJobProof({
         jobId: job.id,
         jobTitle: job.title,
-        startScreenshotUrl: startScreenshot,
-        endScreenshotUrl: endScreenshot,
-        requiredSeconds,
-        spentSeconds: secondsSpent,
+        startScreenshotUrl: proofImg1,
+        endScreenshotUrl: proofImg2,
+        requiredSeconds: isSubscribeJob ? 5 : requiredSeconds,
+        spentSeconds: Math.max(15, secondsSpent),
         proofText: proofNote.trim(),
         reward: rewardAmount,
         aiAnalytics: aiReport
@@ -136,7 +152,11 @@ export const RemoteJobDetailsPage: React.FC<{
 
       if (res.success) {
         setIsSubmitted(true);
-        showToast(`🎉 এআই যাচাইকরণ সম্পন্ন (${aiReport.confidenceScore}% স্কোর)! প্রমাণ অ্যাডমিন প্যানেলে জমা হয়েছে।`, 'success');
+        if (isSubscribeJob) {
+          showToast(`🎉 এআই রোবট স্বয়ংক্রিয়ভাবে স্ক্রিনশট যাচাই করেছে! ৳${rewardAmount.toFixed(2)} সরাসরি মূল ব্যালেন্সে যোগ হয়েছে।`, 'success');
+        } else {
+          showToast(`🎉 এআই যাচাইকরণ সম্পন্ন (${aiReport.confidenceScore}% স্কোর)! প্রমাণ অ্যাডমিন প্যানেলে জমা হয়েছে।`, 'success');
+        }
       } else {
         showToast(res.message || 'সাবমিশন ব্যর্থ হয়েছে', 'error');
       }
@@ -320,26 +340,28 @@ export const RemoteJobDetailsPage: React.FC<{
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
-            {/* 1. Start Screenshot */}
-            <div className="border-2 border-dashed border-gray-200 rounded-2xl p-2.5 text-center bg-gray-50/50 hover:bg-emerald-50/30 transition-all relative">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-bold text-gray-700">১. শুরুর স্ক্রিনশট</span>
+          {isSubscribeJob ? (
+            /* Single Screenshot for Channel Subscriptions */
+            <div className="border-2 border-dashed border-emerald-300 rounded-2xl p-4 text-center bg-emerald-50/30 hover:bg-emerald-50/50 transition-all relative">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-gray-800">
+                  {job.title.includes('টেলিগ্রাম') ? 'টেলিগ্রাম চ্যানেলে জয়েন করার স্ক্রিনশট' : 'ইউটিউব সাবস্ক্রাইব ও বেল আইকনের স্ক্রিনশট'}
+                </span>
                 {startSizeKb > 0 && (
-                  <span className="text-[9px] font-bold text-emerald-600 font-english bg-emerald-100 px-1 rounded">
-                    {startSizeKb} KB
+                  <span className="text-[10px] font-bold text-emerald-700 font-english bg-emerald-100 px-2 py-0.5 rounded-full">
+                    {startSizeKb} KB (কম্প্রেসড)
                   </span>
                 )}
               </div>
 
               {startScreenshot ? (
-                <div className="relative">
-                  <img src={startScreenshot} alt="Start proof" className="w-full h-24 object-cover rounded-xl border border-emerald-300" />
-                  <span className="absolute top-1 right-1 bg-emerald-600 text-white p-1 rounded-full text-[9px] shadow-xs">
-                    <Check className="w-3 h-3" />
+                <div className="relative max-w-xs mx-auto">
+                  <img src={startScreenshot} alt="Subscribe proof" className="w-full h-36 object-cover rounded-xl border-2 border-emerald-400 shadow-xs" />
+                  <span className="absolute top-2 right-2 bg-emerald-600 text-white p-1 rounded-full text-xs shadow-xs flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" />
                   </span>
-                  <label className="block text-[10px] text-emerald-700 font-bold mt-1 cursor-pointer hover:underline">
-                    পরিবর্তন করুন
+                  <label className="inline-block text-xs text-emerald-700 font-extrabold mt-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-emerald-300 hover:bg-emerald-50 shadow-xs">
+                    স্ক্রিনশট পরিবর্তন করুন
                     <input 
                       type="file" 
                       accept="image/*" 
@@ -349,10 +371,12 @@ export const RemoteJobDetailsPage: React.FC<{
                   </label>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center py-4 cursor-pointer">
-                  <Upload className="w-6 h-6 text-gray-400 mb-1" />
-                  <span className="text-[10px] font-bold text-emerald-700">ছবি সিলেক্ট করুন</span>
-                  <span className="text-[9px] text-gray-400 mt-0.5">অটো কম্প্রেস হবে</span>
+                <label className="flex flex-col items-center justify-center py-6 cursor-pointer">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-2 shadow-xs">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-extrabold text-gray-800">সাবস্ক্রাইব করার স্ক্রিনশট সিলেক্ট করুন</span>
+                  <span className="text-[10px] text-gray-500 mt-1">গ্যালারি বা ক্যামেরা থেকে ছবি দিন (স্বয়ংক্রিয়ভাবে &lt;১০০ কেবি হবে)</span>
                   <input 
                     type="file" 
                     accept="image/*" 
@@ -362,26 +386,82 @@ export const RemoteJobDetailsPage: React.FC<{
                 </label>
               )}
             </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* 1. Start Screenshot */}
+              <div className="border-2 border-dashed border-gray-200 rounded-2xl p-2.5 text-center bg-gray-50/50 hover:bg-emerald-50/30 transition-all relative">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold text-gray-700">১. শুরুর স্ক্রিনশট</span>
+                  {startSizeKb > 0 && (
+                    <span className="text-[9px] font-bold text-emerald-600 font-english bg-emerald-100 px-1 rounded">
+                      {startSizeKb} KB
+                    </span>
+                  )}
+                </div>
 
-            {/* 2. End Screenshot */}
-            <div className="border-2 border-dashed border-gray-200 rounded-2xl p-2.5 text-center bg-gray-50/50 hover:bg-emerald-50/30 transition-all relative">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-bold text-gray-700">২. শেষের স্ক্রিনশট</span>
-                {endSizeKb > 0 && (
-                  <span className="text-[9px] font-bold text-emerald-600 font-english bg-emerald-100 px-1 rounded">
-                    {endSizeKb} KB
-                  </span>
+                {startScreenshot ? (
+                  <div className="relative">
+                    <img src={startScreenshot} alt="Start proof" className="w-full h-24 object-cover rounded-xl border border-emerald-300" />
+                    <span className="absolute top-1 right-1 bg-emerald-600 text-white p-1 rounded-full text-[9px] shadow-xs">
+                      <Check className="w-3 h-3" />
+                    </span>
+                    <label className="block text-[10px] text-emerald-700 font-bold mt-1 cursor-pointer hover:underline">
+                      পরিবর্তন করুন
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => handleFileUpload(e, 'start')} 
+                        className="hidden" 
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center py-4 cursor-pointer">
+                    <Upload className="w-6 h-6 text-gray-400 mb-1" />
+                    <span className="text-[10px] font-bold text-emerald-700">ছবি সিলেক্ট করুন</span>
+                    <span className="text-[9px] text-gray-400 mt-0.5">অটো কম্প্রেস হবে</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => handleFileUpload(e, 'start')} 
+                      className="hidden" 
+                    />
+                  </label>
                 )}
               </div>
 
-              {endScreenshot ? (
-                <div className="relative">
-                  <img src={endScreenshot} alt="End proof" className="w-full h-24 object-cover rounded-xl border border-emerald-300" />
-                  <span className="absolute top-1 right-1 bg-emerald-600 text-white p-1 rounded-full text-[9px] shadow-xs">
-                    <Check className="w-3 h-3" />
-                  </span>
-                  <label className="block text-[10px] text-emerald-700 font-bold mt-1 cursor-pointer hover:underline">
-                    পরিবর্তন করুন
+              {/* 2. End Screenshot */}
+              <div className="border-2 border-dashed border-gray-200 rounded-2xl p-2.5 text-center bg-gray-50/50 hover:bg-emerald-50/30 transition-all relative">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold text-gray-700">২. শেষের স্ক্রিনশট</span>
+                  {endSizeKb > 0 && (
+                    <span className="text-[9px] font-bold text-emerald-600 font-english bg-emerald-100 px-1 rounded">
+                      {endSizeKb} KB
+                    </span>
+                  )}
+                </div>
+
+                {endScreenshot ? (
+                  <div className="relative">
+                    <img src={endScreenshot} alt="End proof" className="w-full h-24 object-cover rounded-xl border border-emerald-300" />
+                    <span className="absolute top-1 right-1 bg-emerald-600 text-white p-1 rounded-full text-[9px] shadow-xs">
+                      <Check className="w-3 h-3" />
+                    </span>
+                    <label className="block text-[10px] text-emerald-700 font-bold mt-1 cursor-pointer hover:underline">
+                      পরিবর্তন করুন
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => handleFileUpload(e, 'end')} 
+                        className="hidden" 
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center py-4 cursor-pointer">
+                    <Upload className="w-6 h-6 text-gray-400 mb-1" />
+                    <span className="text-[10px] font-bold text-emerald-700">ছবি সিলেক্ট করুন</span>
+                    <span className="text-[9px] text-gray-400 mt-0.5">অটো কম্প্রেস হবে</span>
                     <input 
                       type="file" 
                       accept="image/*" 
@@ -389,22 +469,10 @@ export const RemoteJobDetailsPage: React.FC<{
                       className="hidden" 
                     />
                   </label>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center py-4 cursor-pointer">
-                  <Upload className="w-6 h-6 text-gray-400 mb-1" />
-                  <span className="text-[10px] font-bold text-emerald-700">ছবি সিলেক্ট করুন</span>
-                  <span className="text-[9px] text-gray-400 mt-0.5">অটো কম্প্রেস হবে</span>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={(e) => handleFileUpload(e, 'end')} 
-                    className="hidden" 
-                  />
-                </label>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Proof Note */}
           <div>

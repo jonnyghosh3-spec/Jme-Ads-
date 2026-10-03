@@ -58,7 +58,14 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
     adminRejectJobSubmission,
     allUsersList,
     adminUpdateUserBalance,
+    adminAdjustUserBalance,
     adminToggleUserStatus,
+    adminSetUserStatus,
+    adminApproveSecurityVerification,
+    adminAddYouTubeTutorial,
+    adminUpdateYouTubeTutorial,
+    adminDeleteYouTubeTutorial,
+    adminToggleYouTubeTutorialActive,
     allWithdrawalsList,
     adminUpdateWithdrawalStatus,
     adminApprovePublisherUpgrade,
@@ -131,11 +138,22 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
   // Screenshot viewer modal
   const [viewingImage, setViewingImage] = useState<string | null>(null);
 
-  // User balance adjustment states
+  // User balance adjustment and filter states
   const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userSortOrder, setUserSortOrder] = useState<
+    'highest_balance' | 'highest_earned' | 'highest_withdrawn' | 'most_referrals' | 'newest'
+  >('highest_balance');
+  const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'under_review' | 'suspended' | 'banned'>('all');
   const [adjustingUser, setAdjustingUser] = useState<any | null>(null);
   const [balanceDelta, setBalanceDelta] = useState<number>(0);
   const [adjustmentReason, setAdjustmentReason] = useState('অ্যাডমিন বোনাস');
+
+  // Tutorial Video Modal State
+  const [showAddTutorialModal, setShowAddTutorialModal] = useState(false);
+  const [newTutorialTitle, setNewTutorialTitle] = useState('');
+  const [newTutorialUrl, setNewTutorialUrl] = useState('');
+  const [newTutorialReward, setNewTutorialReward] = useState(10);
+  const [newTutorialActive, setNewTutorialActive] = useState(true);
 
   // Broadcast Notification state
   const [broadcastTitle, setBroadcastTitle] = useState('');
@@ -1509,60 +1527,97 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
 
               {/* TAB 7: YOUTUBE TUTORIALS & TELEGRAM */}
               {adminTab === 'videos' && (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-extrabold text-base text-white">ইউটিউব ভিডিও ও টেলিগ্রাম ম্যানেজমেন্ট</h3>
-                    <p className="text-xs text-slate-400">হোমপেজের ভিডিও ১ ও ২ এবং অফিসিয়াল টেলিগ্রাম চ্যানেল লিংক পরিবর্তন করুন</p>
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-extrabold text-base text-white">ইউটিউব ভিডিও ও টেলিগ্রাম ম্যানেজমেন্ট</h3>
+                      <p className="text-xs text-slate-400">টিউটোরিয়াল ভিডিও, ওয়াজ এবং অফিসিয়াল টেলিগ্রাম চ্যানেল যোগ ও সক্রিয়/নিষ্ক্রিয় করুন</p>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setNewTutorialTitle('');
+                        setNewTutorialUrl('');
+                        setNewTutorialReward(10);
+                        setNewTutorialActive(true);
+                        setShowAddTutorialModal(true);
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-95"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>+ নতুন ভিডিও যোগ করুন</span>
+                    </button>
                   </div>
 
+                  {/* Primary Video 1 & 2 Settings */}
                   <div className="p-5 rounded-3xl bg-slate-950 border border-slate-800 space-y-4">
+                    <h4 className="text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Video className="w-4 h-4" />
+                      <span>হোমপেজ প্রধান ভিডিও ১ ও ২</span>
+                    </h4>
+
                     {/* Video 1 */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-white block">টিউটোরিয়াল ভিডিও ১ (কাজের নিয়ম)</label>
+                    <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-white">টিউটোরিয়াল ভিডিও ১ (কাজের নিয়মাবলী)</label>
+                        <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                          হোমপেজ কার্ড ১
+                        </span>
+                      </div>
                       <input
                         type="text"
                         placeholder="ভিডিওর শিরোনাম (যেমন: কাজের নিয়মাবলী)"
                         value={ytVideo1Title}
                         onChange={e => setYtVideo1Title(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs mb-1.5 focus:border-emerald-500 focus:outline-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:border-emerald-500 focus:outline-none"
                       />
                       <input
                         type="text"
                         placeholder="ইউটিউব ভিডিও URL (যেমন: https://www.youtube.com/watch?v=...)"
                         value={ytVideo1Url}
                         onChange={e => setYtVideo1Url(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-english text-xs focus:border-emerald-500 focus:outline-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-english text-xs focus:border-emerald-500 focus:outline-none"
                       />
                     </div>
 
                     {/* Video 2 */}
-                    <div className="space-y-2 pt-3 border-t border-slate-800">
-                      <label className="text-xs font-bold text-white block">টিউটোরিয়াল ভিডিও ২ (উত্তোলন নিয়ম)</label>
+                    <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-white">টিউটোরিয়াল ভিডিও ২ (উত্তোলন নিয়ম)</label>
+                        <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                          হোমপেজ কার্ড ২
+                        </span>
+                      </div>
                       <input
                         type="text"
                         placeholder="ভিডিওর শিরোনাম (যেমন: উত্তোলন করার নিয়ম)"
                         value={ytVideo2Title}
                         onChange={e => setYtVideo2Title(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs mb-1.5 focus:border-emerald-500 focus:outline-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:border-emerald-500 focus:outline-none"
                       />
                       <input
                         type="text"
                         placeholder="ইউটিউব ভিডিও URL (যেমন: https://www.youtube.com/watch?v=...)"
                         value={ytVideo2Url}
                         onChange={e => setYtVideo2Url(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-english text-xs focus:border-emerald-500 focus:outline-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-english text-xs focus:border-emerald-500 focus:outline-none"
                       />
                     </div>
 
                     {/* Telegram Channel */}
-                    <div className="space-y-2 pt-3 border-t border-slate-800">
-                      <label className="text-xs font-bold text-white block">অফিসিয়াল টেলিগ্রাম চ্যানেল লিংক</label>
+                    <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-white">অফিসিয়াল টেলিগ্রাম চ্যানেল লিংক</label>
+                        <span className="text-[10px] text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded-md">
+                          Telegram Official
+                        </span>
+                      </div>
                       <input
                         type="text"
                         placeholder="https://t.me/..."
                         value={tgUrl}
                         onChange={e => setTgUrl(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-english text-xs focus:border-emerald-500 focus:outline-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-english text-xs focus:border-emerald-500 focus:outline-none"
                       />
                       <p className="text-[10px] text-slate-400">এই লিংকটি হেডার এবং হোমপেজের টেলিগ্রাম জয়েন বাটনে সরাসরি কাজ করবে।</p>
                     </div>
@@ -1584,6 +1639,79 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
                       <CheckCircle2 className="w-5 h-5" />
                       <span>পরিবর্তন সংরক্ষণ করুন (Save All Settings)</span>
                     </button>
+                  </div>
+
+                  {/* Unlimited YouTube Videos & Waz List */}
+                  <div className="p-5 rounded-3xl bg-slate-950 border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                        <Play className="w-4 h-4 text-red-500 fill-red-500" />
+                        <span>ইউটিউব ভিডিও ও ওয়াজ লিস্ট (সীমাহীন ভিডিও যুক্ত করার সুবিধা)</span>
+                      </h4>
+                      <span className="text-[11px] text-slate-400 font-english font-bold">
+                        {(settings.youtubeTutorialsList || []).length}টি ভিডিও
+                      </span>
+                    </div>
+
+                    {(settings.youtubeTutorialsList || []).length === 0 ? (
+                      <div className="p-6 text-center bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
+                        <Video className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                        <p className="text-xs text-slate-400">বর্তমানে কোনো অতিরিক্ত ভিডিও যুক্ত করা হয়নি।</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          উপরে "+ নতুন ভিডিও যোগ করুন" বাটনে ক্লিক করে যত খুশি ইউটিউব ভিডিও বা ওয়াজ যুক্ত করতে পারবেন।
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {(settings.youtubeTutorialsList || []).map((v) => (
+                          <div key={v.id} className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h5 className="font-extrabold text-xs text-white truncate">{v.title}</h5>
+                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                                  v.active !== false ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'
+                                }`}>
+                                  {v.active !== false ? 'সক্রিয় (Active)' : 'ইন-অ্যাক্টিভ (বন্ধ)'}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-400 font-mono font-english truncate max-w-xs">{v.url}</p>
+                              {v.reward && (
+                                <span className="text-[10px] font-bold text-emerald-400 font-english mt-0.5 block">
+                                  রিওয়ার্ড: ৳{v.reward.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {/* Active/Inactive Toggle Button */}
+                              <button
+                                onClick={() => adminToggleYouTubeTutorialActive(v.id)}
+                                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                  v.active !== false 
+                                    ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30' 
+                                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                {v.active !== false ? 'সক্রিয়' : 'ইন-অ্যাক্টিভ'}
+                              </button>
+
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => {
+                                  if (confirm(`আপনি কি নিশ্চিত "${v.title}" ভিডিওটি ডিলিট করতে চান?`)) {
+                                    adminDeleteYouTubeTutorial(v.id);
+                                  }
+                                }}
+                                className="p-1.5 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 cursor-pointer transition-colors"
+                                title="মুছে ফেলুন"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1683,88 +1811,340 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
                 </div>
               )}
 
-              {/* TAB 9: USER BALANCE CONTROL */}
-              {adminTab === 'users' && (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-extrabold text-base text-white">ইউজার অনুসন্ধান ও ব্যালেন্স সমন্বয়</h3>
-                    <p className="text-xs text-slate-400">যেকোনো ইউজারের ব্যালেন্স যোগ/বিয়োগ বা অ্যাকাউন্ট সক্রিয়/স্থগিত করুন</p>
-                  </div>
+              {/* TAB 9: USER BALANCE & ACCOUNT CONTROL */}
+              {adminTab === 'users' && (() => {
+                const totalUsers = allUsersList.length;
+                const activeCount = allUsersList.filter(u => u.accountStatus === 'active' || !u.accountStatus).length;
+                const reviewCount = allUsersList.filter(u => u.accountStatus === 'under_review').length;
+                const suspendedCount = allUsersList.filter(u => u.accountStatus === 'suspended').length;
+                const bannedCount = allUsersList.filter(u => u.accountStatus === 'banned').length;
 
-                  <div className="relative">
-                    <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="নাম, ফোন বা রেফারেল কোড দিয়ে খুঁজুন..."
-                      value={userSearchTerm}
-                      onChange={e => setUserSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
+                const filteredUsers = allUsersList
+                  .filter(u => {
+                    // Status filter
+                    if (userStatusFilter === 'active' && u.accountStatus !== 'active' && u.accountStatus) return false;
+                    if (userStatusFilter === 'under_review' && u.accountStatus !== 'under_review') return false;
+                    if (userStatusFilter === 'suspended' && u.accountStatus !== 'suspended') return false;
+                    if (userStatusFilter === 'banned' && u.accountStatus !== 'banned') return false;
 
-                  <div className="space-y-2.5">
-                    {allUsersList
-                      .filter(u =>
-                        userSearchTerm === ''
-                          ? true
-                          : u.name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                            u.phone?.includes(userSearchTerm) ||
-                            u.referralCode?.toLowerCase().includes(userSearchTerm.toLowerCase())
-                      )
-                      .slice(0, 20)
-                      .map((u) => (
-                        <div key={u.uid} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <h4 className="font-bold text-xs text-white truncate">{u.name}</h4>
-                              {u.isVerifiedPublisher && (
-                                <span className="text-[9px] font-black bg-emerald-500 text-slate-950 px-1.5 py-0.2 rounded-full">
-                                  ভেরিফাইড
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[10px] text-slate-400">
-                              {u.phone} • রেফার কোড: <strong className="text-emerald-400 font-mono">{u.referralCode}</strong> • রেফার: {u.referralCount || 0}
-                            </p>
-                          </div>
+                    // Search filter
+                    if (userSearchTerm.trim() === '') return true;
+                    const term = userSearchTerm.toLowerCase();
+                    return (
+                      u.name?.toLowerCase().includes(term) ||
+                      u.phone?.includes(term) ||
+                      u.email?.toLowerCase().includes(term) ||
+                      u.referralCode?.toLowerCase().includes(term)
+                    );
+                  })
+                  .sort((a, b) => {
+                    if (userSortOrder === 'highest_balance') return (b.balance || 0) - (a.balance || 0);
+                    if (userSortOrder === 'highest_earned') return (b.totalEarned || 0) - (a.totalEarned || 0);
+                    if (userSortOrder === 'highest_withdrawn') return (b.totalWithdrawn || 0) - (a.totalWithdrawn || 0);
+                    if (userSortOrder === 'most_referrals') return (b.referralCount || 0) - (a.referralCount || 0);
+                    if (userSortOrder === 'newest') return (b.createdAt || 0) - (a.createdAt || 0);
+                    return 0;
+                  });
 
-                          <div className="flex items-center gap-2 shrink-0">
-                            <div className="text-right">
-                              <span className="text-xs font-black text-emerald-400 font-english block">
-                                ৳{u.balance.toFixed(2)}
-                              </span>
-                            </div>
+                return (
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <h3 className="font-extrabold text-base text-white">ইউজার ব্যালেন্স ও অ্যাকাউন্ট কন্ট্রোল</h3>
+                        <p className="text-xs text-slate-400">ফিল্টার দিয়ে সর্বোচ্চ আয়ের ইউজার দেখুন, ১-ক্লিকে ব্যালেন্স বাড়ানো/কমানো এবং ব্যান করুন</p>
+                      </div>
 
-                            <button
-                              onClick={() => {
-                                setAdjustingUser(u);
-                                setBalanceDelta(50);
-                                setAdjustmentReason('অ্যাডমিন পুরষ্কার');
-                              }}
-                              className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 text-xs font-bold cursor-pointer"
-                            >
-                              ব্যালেন্স +/-
-                            </button>
+                      {/* Sort Dropdown: সব থেকে বেশি ইনকাম যেন উপর থেকে দেখায় */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-400 whitespace-nowrap">সাজান:</span>
+                        <select
+                          value={userSortOrder}
+                          onChange={e => setUserSortOrder(e.target.value as any)}
+                          className="px-3 py-2 rounded-xl bg-slate-900 border border-emerald-500/40 text-emerald-400 font-bold text-xs focus:outline-none focus:border-emerald-400 cursor-pointer"
+                        >
+                          <option value="highest_balance">👑 সর্বোচ্চ ব্যালেন্স (উপর থেকে)</option>
+                          <option value="highest_earned">💰 সর্বোচ্চ মোট আয় (Total Earned)</option>
+                          <option value="highest_withdrawn">💳 সর্বোচ্চ উত্তোলন (Withdrawn)</option>
+                          <option value="most_referrals">👥 সর্বোচ্চ রেফারেল সংখ্যা</option>
+                          <option value="newest">⏱️ নতুন নিবন্ধিত ইউজার</option>
+                        </select>
+                      </div>
+                    </div>
 
-                            <button
-                              onClick={() => {
-                                const newStatus = u.accountStatus === 'suspended' ? 'active' : 'suspended';
-                                adminToggleUserStatus(u.uid, newStatus);
-                              }}
-                              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${
-                                u.accountStatus === 'suspended'
-                                  ? 'bg-rose-500 text-white'
-                                  : 'bg-slate-800 text-slate-400 hover:text-white'
-                              }`}
-                            >
-                              {u.accountStatus === 'suspended' ? 'স্থগিত' : 'সক্রিয়'}
-                            </button>
-                          </div>
+                    {/* Search & Status Filter Tabs */}
+                    <div className="space-y-2.5">
+                      <div className="relative">
+                        <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="নাম, ফোন নম্বর, ইমেইল বা রেফারেল কোড দিয়ে খুঁজুন..."
+                          value={userSearchTerm}
+                          onChange={e => setUserSearchTerm(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setUserStatusFilter('all')}
+                          className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
+                            userStatusFilter === 'all'
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          সকল ইউজার ({totalUsers})
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setUserStatusFilter('active')}
+                          className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
+                            userStatusFilter === 'active'
+                              ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                              : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          সক্রিয় ({activeCount})
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setUserStatusFilter('under_review')}
+                          className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
+                            userStatusFilter === 'under_review'
+                              ? 'bg-amber-400 text-slate-950 shadow-xs'
+                              : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          ওয়ার্নিং/তদন্তাধীন ({reviewCount})
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setUserStatusFilter('suspended')}
+                          className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
+                            userStatusFilter === 'suspended'
+                              ? 'bg-orange-500 text-white shadow-xs'
+                              : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          স্থগিত ({suspendedCount})
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setUserStatusFilter('banned')}
+                          className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
+                            userStatusFilter === 'banned'
+                              ? 'bg-rose-600 text-white shadow-xs'
+                              : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          ব্যানড ({bannedCount})
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Users List */}
+                    <div className="space-y-3">
+                      {filteredUsers.length === 0 ? (
+                        <div className="p-8 text-center bg-slate-950 rounded-3xl border border-slate-800">
+                          <Users className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+                          <p className="text-xs text-slate-400">কোনো ইউজার পাওয়া যায়নি</p>
                         </div>
-                      ))}
+                      ) : (
+                        filteredUsers.slice(0, 50).map((u, idx) => (
+                          <div
+                            key={u.uid}
+                            className={`p-4 rounded-3xl bg-slate-950 border transition-all space-y-3 ${
+                              u.accountStatus === 'banned'
+                                ? 'border-rose-900/60 bg-rose-950/10'
+                                : u.accountStatus === 'suspended'
+                                ? 'border-orange-900/60 bg-orange-950/10'
+                                : u.accountStatus === 'under_review'
+                                ? 'border-amber-900/60 bg-amber-950/10'
+                                : 'border-slate-800 hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-6 h-6 rounded-full bg-slate-800 text-slate-400 text-[10px] font-black flex items-center justify-center shrink-0">
+                                    #{idx + 1}
+                                  </span>
+                                  <h4 className="font-extrabold text-sm text-white truncate">{u.name}</h4>
+                                  
+                                  {/* Status badge */}
+                                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                                    u.accountStatus === 'banned'
+                                      ? 'bg-rose-500 text-white'
+                                      : u.accountStatus === 'suspended'
+                                      ? 'bg-orange-500 text-white'
+                                      : u.accountStatus === 'under_review'
+                                      ? 'bg-amber-400 text-slate-950'
+                                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                  }`}>
+                                    {u.accountStatus === 'banned'
+                                      ? 'ব্যানড (Banned)'
+                                      : u.accountStatus === 'suspended'
+                                      ? 'স্থগিত (Suspended)'
+                                      : u.accountStatus === 'under_review'
+                                      ? 'ওয়ার্নিং/তদন্তাধীন'
+                                      : 'সক্রিয় (Active)'}
+                                  </span>
+
+                                  {u.isVerifiedPublisher && (
+                                    <span className="text-[9px] font-black bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                                      ভেরিফাইড
+                                    </span>
+                                  )}
+                                </div>
+
+                                <p className="text-[11px] text-slate-400 mt-1">
+                                  ফোন: <strong className="text-white font-mono">{u.phone}</strong> • ইমেইল: {u.email}
+                                </p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                  রেফার কোড: <strong className="text-emerald-400 font-mono">{u.referralCode}</strong> • মোট রেফার: {u.referralCount || 0} জন • মোট উত্তোলন: ৳{(u.totalWithdrawn || 0).toFixed(2)}
+                                </p>
+                                {u.warningNote && (
+                                  <p className="text-[11px] text-amber-400 bg-amber-500/10 p-1.5 rounded-lg border border-amber-500/20 mt-1">
+                                    ⚠️ ওয়ার্নিং নোট: {u.warningNote}
+                                  </p>
+                                )}
+                                {u.bannedReason && (
+                                  <p className="text-[11px] text-rose-400 bg-rose-500/10 p-1.5 rounded-lg border border-rose-500/20 mt-1">
+                                    🚫 ব্যান কারণ: {u.bannedReason}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="text-right shrink-0">
+                                <span className="text-lg font-black text-emerald-400 font-english block">
+                                  ৳{u.balance.toFixed(2)}
+                                </span>
+                                <span className="text-[10px] text-slate-400 block font-english">
+                                  মোট আয়: ৳{(u.totalEarned || 0).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* 1-Click Fast Balance Control Strip */}
+                            <div className="pt-2 border-t border-slate-900 flex flex-wrap items-center justify-between gap-2 text-xs">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] text-slate-400 font-bold">ব্যালেন্স কুইক অ্যাড/মাইনাস:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => adminUpdateUserBalance(u.uid, 50, 'অ্যাডমিন বোনাস (+৫০)')}
+                                  className="px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-bold text-[11px] cursor-pointer"
+                                  title="১-ক্লিকে ৫০ টাকা বাড়ান"
+                                >
+                                  +৳৫০
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => adminUpdateUserBalance(u.uid, 100, 'অ্যাডমিন বোনাস (+১০০)')}
+                                  className="px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-bold text-[11px] cursor-pointer"
+                                  title="১-ক্লিকে ১০০ টাকা বাড়ান"
+                                >
+                                  +৳১০০
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => adminUpdateUserBalance(u.uid, -50, 'অ্যাডমিন কর্তন (-৫০)')}
+                                  className="px-2 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 font-bold text-[11px] cursor-pointer"
+                                  title="১-ক্লিকে ৫০ টাকা কমান"
+                                >
+                                  -৳৫০
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => adminUpdateUserBalance(u.uid, -100, 'অ্যাডমিন কর্তন (-১০০)')}
+                                  className="px-2 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 font-bold text-[11px] cursor-pointer"
+                                  title="১-ক্লিকে ১০০ টাকা কমান"
+                                >
+                                  -৳১০০
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAdjustingUser(u);
+                                    setBalanceDelta(50);
+                                    setAdjustmentReason('অ্যাডমিন পুরষ্কার');
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-[11px] cursor-pointer"
+                                >
+                                  কাস্টম +/-
+                                </button>
+                              </div>
+
+                              {/* 1-Click Account Status Controls */}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {u.accountStatus !== 'active' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => adminSetUserStatus(u.uid, 'active')}
+                                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-[11px] cursor-pointer"
+                                  >
+                                    সক্রিয় করুন
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const note = prompt('ইউজারকে ওয়ার্নিং মেসেজ দিন (যেমন: ফেক রেফারেল সন্দেহ):', 'অনুগ্রহ করে নিয়মানুযায়ী কাজ করুন');
+                                    if (note) {
+                                      adminSetUserStatus(u.uid, 'under_review', note);
+                                    }
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-bold text-[11px] cursor-pointer"
+                                >
+                                  ওয়ার্নিং দিন
+                                </button>
+
+                                {u.accountStatus !== 'suspended' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => adminSetUserStatus(u.uid, 'suspended')}
+                                    className="px-2.5 py-1 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 font-bold text-[11px] cursor-pointer"
+                                  >
+                                    স্থগিত
+                                  </button>
+                                )}
+
+                                {u.accountStatus !== 'banned' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const reason = prompt('অ্যাকাউন্ট ব্যান করার কারণ লিখুন:', 'অটোমেশন বট ও স্প্যামিংয়ের কারণে ব্যান করা হলো');
+                                      if (reason) {
+                                        adminSetUserStatus(u.uid, 'banned', reason);
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-black text-[11px] cursor-pointer"
+                                  >
+                                    ব্যান করুন
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => adminSetUserStatus(u.uid, 'active')}
+                                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-[11px] cursor-pointer"
+                                  >
+                                    আন-ব্যান
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* TAB 10: BROADCAST PUSH */}
               {adminTab === 'broadcast' && (
@@ -2271,6 +2651,91 @@ export const AdminPanelModal: React.FC<{ isOpen: boolean; onClose: () => void }>
               className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs cursor-pointer"
             >
               ব্যালেন্স আপডেট নিশ্চিত করুন
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ADD YOUTUBE TUTORIAL / WAZ VIDEO MODAL */}
+      {showAddTutorialModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-slate-950 border border-red-500/40 rounded-3xl p-5 max-w-sm w-full space-y-3.5 text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Play className="w-5 h-5 text-red-500 fill-red-500" />
+                <h3 className="font-extrabold text-sm text-white">নতুন ইউটিউব ভিডিও / ওয়াজ যোগ করুন</h3>
+              </div>
+              <button 
+                onClick={() => setShowAddTutorialModal(false)} 
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-white block mb-1">ভিডিওর শিরোনাম (Title)</label>
+              <input
+                type="text"
+                placeholder="যেমন: কাজের সহজ উপায় অথবা ইসলামিক ওয়াজ"
+                value={newTutorialTitle}
+                onChange={e => setNewTutorialTitle(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-red-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-white block mb-1">ইউটিউব ভিডিও লিঙ্ক (YouTube URL)</label>
+              <input
+                type="text"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={newTutorialUrl}
+                onChange={e => setNewTutorialUrl(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-english text-xs focus:border-red-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-white block mb-1">ভিডিও দেখার রিওয়ার্ড (টাকা)</label>
+              <input
+                type="number"
+                value={newTutorialReward}
+                onChange={e => setNewTutorialReward(Number(e.target.value))}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-english text-xs focus:border-red-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                id="tut_active"
+                checked={newTutorialActive}
+                onChange={e => setNewTutorialActive(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 rounded bg-slate-900 border-slate-700"
+              />
+              <label htmlFor="tut_active" className="text-xs font-bold text-slate-300 cursor-pointer">
+                এই ভিডিওটি এখনই সক্রিয় (Active) রাখুন
+              </label>
+            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                if (!newTutorialTitle.trim() || !newTutorialUrl.trim()) {
+                  showToast('ভিডিওর শিরোনাম এবং URL দুটিই আবশ্যক', 'warning');
+                  return;
+                }
+                await adminAddYouTubeTutorial({
+                  title: newTutorialTitle.trim(),
+                  url: newTutorialUrl.trim(),
+                  reward: Number(newTutorialReward) || 10,
+                  active: newTutorialActive
+                });
+                setShowAddTutorialModal(false);
+              }}
+              className="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-98"
+            >
+              ভিডিও সংরক্ষণ করুন
             </button>
           </div>
         </div>
